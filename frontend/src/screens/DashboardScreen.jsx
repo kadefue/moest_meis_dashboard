@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getIndicatorPerformance, getTable } from '../MockData';
+import { getIndicatorPerformance, getTable, getVisibleIndicators } from '../MockData';
 import MetricCard from '../components/MetricCard';
 import TanzaniaMap from '../components/TanzaniaMap';
 import IndicatorChart from '../components/IndicatorChart';
@@ -31,12 +31,14 @@ export default function DashboardScreen({ onSelectIndicator, navigateToView }) {
     const prjs = getTable('projects');
     setProjects(prjs);
     setProjectNodes(getTable('project_nodes'));
-    setIndicators(getTable('indicators'));
+    
+    const visInds = getVisibleIndicators();
+    setIndicators(visInds);
 
     const acts = getTable('activities');
     setActivities(acts);
 
-    const indIds = ['IND-001', 'IND-002', 'IND-003', 'IND-004'];
+    const indIds = visInds.slice(0, 4).map(i => i.indicator_id); // Show top 4 visible indicators
     const perfs = indIds.map(id => getIndicatorPerformance(id, selectedPeriod));
     setPerformances(perfs);
 

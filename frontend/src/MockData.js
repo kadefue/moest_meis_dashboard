@@ -23,6 +23,43 @@ const INITIAL_ROLES = [
   { name: 'School Data Entry Officer', description: 'Submits school-level raw datasets.', default_permissions: ['view_dashboard', 'submit_data'] }
 ];
 
+const INITIAL_REGIONS = [
+  { region_id: 'REG-001', name: 'Dar es Salaam' },
+  { region_id: 'REG-002', name: 'Dodoma' },
+  { region_id: 'REG-003', name: 'Mwanza' },
+  { region_id: 'REG-004', name: 'Arusha' },
+  { region_id: 'REG-005', name: 'Mbeya' }
+];
+
+const INITIAL_DISTRICTS = [
+  { district_id: 'DIST-001', region_id: 'REG-001', name: 'Ilala' },
+  { district_id: 'DIST-002', region_id: 'REG-001', name: 'Kinondoni' },
+  { district_id: 'DIST-003', region_id: 'REG-002', name: 'Dodoma Municipal' },
+  { district_id: 'DIST-004', region_id: 'REG-002', name: 'Bahi' },
+  { district_id: 'DIST-005', region_id: 'REG-003', name: 'Nyamagana' },
+  { district_id: 'DIST-006', region_id: 'REG-003', name: 'Sengerema' },
+  { district_id: 'DIST-007', region_id: 'REG-004', name: 'Arusha City' },
+  { district_id: 'DIST-008', region_id: 'REG-004', name: 'Meru' },
+  { district_id: 'DIST-009', region_id: 'REG-005', name: 'Mbeya City' },
+  { district_id: 'DIST-010', region_id: 'REG-005', name: 'Rungwe' }
+];
+
+const INITIAL_INSTITUTIONS = [
+  { inst_id: 'INST-001', name: 'MoEST Headquarters', type: 'Ministry', region_id: 'REG-002', district_id: 'DIST-003' },
+  { inst_id: 'INST-002', name: 'Tanzania Institute of Education (TIE)', type: 'Agency', region_id: 'REG-001', district_id: 'DIST-002' }
+];
+
+const INITIAL_DEPARTMENTS = [
+  { dept_id: 'DEPT-001', inst_id: 'INST-001', name: 'Primary Education Division' },
+  { dept_id: 'DEPT-002', inst_id: 'INST-001', name: 'Secondary Education Division' },
+  { dept_id: 'DEPT-003', inst_id: 'INST-001', name: 'M&E Section' }
+];
+
+const INITIAL_SECTIONS = [
+  { section_id: 'SEC-001', dept_id: 'DEPT-003', name: 'Data Analysis Section' },
+  { section_id: 'SEC-002', dept_id: 'DEPT-003', name: 'Quality Assurance Section' }
+];
+
 const INITIAL_PROJECT_NODES = [
   // HEET Nodes
   { node_id: 'PN-101', project_id: 'PRJ-001', parent_node_id: null, level_type: 'Component', name: 'Infrastructure & Equipment' },
@@ -137,16 +174,21 @@ const INITIAL_AUDIT_LOGS = [
 ];
 
 const USERS = [
-  { username: 'admin@moe.go.tz', name: 'Hamis Juma', role: 'System Administrator', dept: 'ICT Unit', token: 'mock-token-admin' },
-  { username: 'executive@moe.go.tz', name: 'Dr. Leonard Akwilapo', role: 'MoEST Leadership', dept: 'Permanent Secretary Office', token: 'mock-token-exec' },
-  { username: 'evaluator.national@moe.go.tz', name: 'Neema Temu', role: 'National M&E Officer', dept: 'M&E Section', token: 'mock-token-national' },
-  { username: 'reo.dodoma@moe.go.tz', name: 'Said Mwinyi', role: 'Regional M&E Officer', dept: 'Dodoma Regional Office', token: 'mock-token-regional' },
-  { username: 'deo.dodoma@moe.go.tz', name: 'Mary Chisunga', role: 'District Education Officer', dept: 'Bahi District Council', token: 'mock-token-district' },
-  { username: 'school.entry@moe.go.tz', name: 'Peter Temba', role: 'School Data Entry Officer', dept: 'Bahi Primary School', token: 'mock-token-school' }
+  { username: 'admin@moe.go.tz', name: 'Hamis Juma', role: 'System Administrator', dept: 'ICT Unit', is_super_user: true, region_id: null, project_id: null, inst_id: 'INST-001', dept_id: null, section_id: null, token: 'mock-token-admin' },
+  { username: 'executive@moe.go.tz', name: 'Dr. Leonard Akwilapo', role: 'MoEST Leadership', dept: 'Permanent Secretary Office', is_super_user: true, region_id: null, project_id: null, inst_id: 'INST-001', dept_id: null, section_id: null, token: 'mock-token-exec' },
+  { username: 'evaluator.national@moe.go.tz', name: 'Neema Temu', role: 'National M&E Officer', dept: 'M&E Section', is_super_user: true, region_id: null, project_id: null, inst_id: 'INST-001', dept_id: 'DEPT-003', section_id: null, token: 'mock-token-national' },
+  { username: 'reo.dodoma@moe.go.tz', name: 'Said Mwinyi', role: 'Regional M&E Officer', dept: 'Dodoma Regional Office', is_super_user: false, region_id: 'REG-002', project_id: null, inst_id: null, dept_id: null, section_id: null, token: 'mock-token-regional' },
+  { username: 'deo.dodoma@moe.go.tz', name: 'Mary Chisunga', role: 'District Education Officer', dept: 'Bahi District Council', is_super_user: false, region_id: 'REG-002', project_id: null, inst_id: null, dept_id: null, section_id: null, token: 'mock-token-district' },
+  { username: 'school.entry@moe.go.tz', name: 'Peter Temba', role: 'School Data Entry Officer', dept: 'Bahi Primary School', is_super_user: false, region_id: 'REG-002', project_id: null, inst_id: null, dept_id: null, section_id: null, token: 'mock-token-school' }
 ];
 
 export function initializeStorage() {
   const tables = {
+    regions: INITIAL_REGIONS,
+    districts: INITIAL_DISTRICTS,
+    institutions: INITIAL_INSTITUTIONS,
+    departments: INITIAL_DEPARTMENTS,
+    sections: INITIAL_SECTIONS,
     frameworks: INITIAL_FRAMEWORKS,
     nodes: INITIAL_NODES,
     projects: INITIAL_PROJECTS,
@@ -282,6 +324,11 @@ async function syncToBackend(name, oldData, newData) {
     const headers = getAuthHeaders();
     
     const getUniqueId = (item, tableName) => {
+      if (tableName === 'regions') return item.region_id;
+      if (tableName === 'districts') return item.district_id;
+      if (tableName === 'institutions') return item.inst_id;
+      if (tableName === 'departments') return item.dept_id;
+      if (tableName === 'sections') return item.section_id;
       if (tableName === 'frameworks') return item.framework_id;
       if (tableName === 'projects') return item.project_id;
       if (tableName === 'nodes' || tableName === 'project_nodes') return item.node_id;
@@ -331,6 +378,8 @@ async function syncToBackend(name, oldData, newData) {
         }, { headers });
       } else if (name === 'roles') {
         await axios.post(`${API_BASE}/roles`, added, { headers });
+      } else if (['regions', 'districts', 'institutions', 'departments', 'sections'].includes(name)) {
+        await axios.post(`${API_BASE}/${name}`, added, { headers });
       }
     }
     // Case 2: Item deleted
@@ -355,6 +404,8 @@ async function syncToBackend(name, oldData, newData) {
         await axios.delete(`${API_BASE}/users/${id}`, { headers });
       } else if (name === 'roles') {
         await axios.delete(`${API_BASE}/roles/${id}`, { headers });
+      } else if (['regions', 'districts', 'institutions', 'departments', 'sections'].includes(name)) {
+        await axios.delete(`${API_BASE}/${name}/${id}`, { headers });
       }
     }
     // Case 3: Item updated
@@ -402,6 +453,8 @@ async function syncToBackend(name, oldData, newData) {
           description: updated.description,
           default_permissions: updated.default_permissions
         }, { headers });
+      } else if (['regions', 'districts', 'institutions', 'departments', 'sections'].includes(name)) {
+        await axios.put(`${API_BASE}/${name}/${id}`, updated, { headers });
       }
     }
   } catch (err) {
@@ -430,10 +483,28 @@ export function logAction(username, action, entity, details) {
   return newLog;
 }
 
-export function getIndicatorPerformance(indicatorId, period = '2024/25') {
-  const allActuals = getTable('actual_data');
+export function getIndicatorPerformance(indicatorId, period = '2024/25', userContext = null) {
+  if (!userContext) {
+    const sessionUserStr = localStorage.getItem('me_current_user');
+    userContext = sessionUserStr ? JSON.parse(sessionUserStr) : null;
+  }
+  
+  let allActuals = getTable('actual_data');
+  let targets = getTable('targets').filter(t => t.indicator_id === indicatorId && t.financial_year === period);
+  
+  // Apply Scope Filters
+  if (userContext && !userContext.is_super_user) {
+    if (userContext.region_id) {
+      const regions = getTable('regions');
+      const userRegion = regions.find(r => r.region_id === userContext.region_id);
+      if (userRegion) {
+        allActuals = allActuals.filter(a => a.region && a.region.toLowerCase() === userRegion.name.toLowerCase());
+        targets = targets.filter(t => t.region && t.region.toLowerCase() === userRegion.name.toLowerCase());
+      }
+    }
+  }
+
   const ind = getTable('indicators').find(i => i.indicator_id === indicatorId);
-  const targets = getTable('targets').filter(t => t.indicator_id === indicatorId && t.financial_year === period);
   const targetVal = targets.length > 0 ? (targets.reduce((acc, curr) => acc + Number(curr.target_value), 0) / targets.length) : 0;
   const baselineVal = targets.length > 0 ? (targets.reduce((acc, curr) => acc + Number(curr.baseline_value), 0) / targets.length) : 0;
   const isLowerBetter = indicatorId === 'IND-002';
@@ -600,4 +671,49 @@ export function getFrameworkSummary() {
     below_target: belowTarget,
     results
   };
+}
+
+export function getVisibleIndicators(userContext = null) {
+  if (!userContext) {
+    const sessionUserStr = localStorage.getItem('me_current_user');
+    userContext = sessionUserStr ? JSON.parse(sessionUserStr) : null;
+  }
+
+  const allIndicators = getTable('indicators');
+  
+  if (!userContext || userContext.is_super_user) {
+    return allIndicators;
+  }
+
+  if (userContext.project_id) {
+    const pNodes = getTable('project_nodes').filter(n => n.project_id === userContext.project_id);
+    const nodeIds = pNodes.map(n => n.node_id);
+    return allIndicators.filter(ind => nodeIds.includes(ind.associated_project_node_id));
+  }
+
+  if (userContext.inst_id) {
+    const meta = getTable('indicator_metadata');
+    let allowedUnits = [];
+    const inst = getTable('institutions').find(i => i.inst_id === userContext.inst_id);
+    if (inst) allowedUnits.push(inst.name.toLowerCase());
+    
+    if (userContext.dept_id) {
+      const dept = getTable('departments').find(d => d.dept_id === userContext.dept_id);
+      if (dept) allowedUnits.push(dept.name.toLowerCase());
+    }
+
+    if (userContext.section_id) {
+      const sec = getTable('sections').find(s => s.section_id === userContext.section_id);
+      if (sec) allowedUnits.push(sec.name.toLowerCase());
+    }
+
+    return allIndicators.filter(ind => {
+      const m = meta.find(md => md.indicator_id === ind.indicator_id);
+      if (!m || !m.responsible_unit) return false;
+      return allowedUnits.some(unit => m.responsible_unit.toLowerCase().includes(unit));
+    });
+  }
+
+  // Regional users see all indicators generally, but their data is filtered in getIndicatorPerformance
+  return allIndicators;
 }

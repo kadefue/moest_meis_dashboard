@@ -377,6 +377,11 @@ h3 {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: visible;
+  z-index: 1;
+}
+
+.card:focus-within {
+  z-index: 50;
 }
 
 .card:hover {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getTable, saveTable, logAction } from '../MockData';
+import { getTable, saveTable, logAction, getVisibleIndicators } from '../MockData';
 import { useToast } from '../components/ToastProvider';
 import { useConfirm } from '../components/ConfirmProvider';
 import SearchableSelect from '../components/SearchableSelect';
@@ -40,24 +40,30 @@ export default function DataEntryScreen({ user }) {
 
   useEffect(() => {
     // MSDD Page 8 Constraint: submissions are strictly restricted to primary indicators (is_derived = false)
-    const allInds = getTable('indicators');
+    const allInds = getVisibleIndicators(user);
     const primaryOnly = allInds.filter(i => !i.is_derived);
     
     setIndicators(primaryOnly);
     if (primaryOnly.length > 0) setIndicatorId(primaryOnly[0].indicator_id);
 
     // Smart defaults based on logged in user scope
-    if (user?.role === 'Regional M&E Officer') {
-      const reg = user.dept.split(' ')[0];
-      setRegion(reg);
-    } else if (user?.role === 'District Education Officer') {
-      const parts = user.dept.split(' ');
-      setRegion('Dodoma');
-      setDistrict(parts.slice(0, parts.length - 1).join(' '));
-    } else if (user?.role === 'School Data Entry Officer') {
-      setRegion('Dodoma');
-      setDistrict('Bahi');
-      setWard('Bahi');
+    if (user?.region_id) {
+      const regions = getTable('regions');
+      const regObj = regions.find(r => r.region_id === user.region_id);
+      if (regObj) setRegion(regObj.name);
+    } else {
+      if (user?.role === 'Regional M&E Officer') {
+        const reg = (user.dept || '').split(' ')[0];
+        setRegion(reg);
+      } else if (user?.role === 'District Education Officer') {
+        const parts = (user.dept || '').split(' ');
+        setRegion('Dodoma');
+        setDistrict(parts.slice(0, parts.length - 1).join(' '));
+      } else if (user?.role === 'School Data Entry Officer') {
+        setRegion('Dodoma');
+        setDistrict('Bahi');
+        setWard('Bahi');
+      }
     }
 
     // Load user submissions

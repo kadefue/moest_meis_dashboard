@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTable, saveTable, getIndicatorPerformance, logAction } from '../MockData';
+import { getTable, saveTable, getIndicatorPerformance, logAction, getVisibleIndicators } from '../MockData';
 import { useToast } from '../components/ToastProvider';
 import IndicatorChart from '../components/IndicatorChart';
 import SearchableSelect from '../components/SearchableSelect';

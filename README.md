@@ -6,6 +6,29 @@ The architecture is fully compliant with the **MoEST System Design Document (SDD
 
 ---
 
+## ✨ Key Features & Capabilities
+
+1. **5-Perspective Dynamic Dashboard**
+   - **Framework View:** Hierarchical outcome tree linking strategic planning nodes down to mapped operations and KPIs.
+   - **Indicator View:** Drill-down into specific KPI performance with multi-period tracking.
+   - **Activity Registry:** Track mapped projects and operations to their root outcomes.
+   - **Geographic View:** SVG Choropleth Map highlighting regional performance and variations.
+   - **Stakeholder View:** Isolate and track NGO/Development Partner contributions separately from the Official Government track.
+
+2. **Granular User Scopes & Data Visibility**
+   Users can be strictly bound to:
+   - **🌍 Super User:** Full visibility over the entire dataset (e.g., PS, National M&E).
+   - **📍 Regional User:** Dynamically restricts dashboard metrics to a specific assigned Region.
+   - **🏢 Institutional User:** Restricts KPI visibility to indicators owned by specific Institutions, Departments, or Sections.
+   - **📁 Project User:** Limits dashboard visibility to metrics mapped directly to a specific investment project.
+
+3. **Organizational & Geographic Hierarchy Engine**
+   - Full CRUD operations for cascading Geographic hierarchies (Regions → Districts).
+   - Full CRUD operations for cascading Organizational hierarchies (Institutions → Departments → Sections).
+   - Prevents orphaned data by enforcing referential integrity (e.g., cannot delete a Region that has Districts).
+
+---
+
 ## 🏗️ System Architecture
 
 The project is structured into a modern dual-track architecture:
@@ -128,9 +151,9 @@ The database comes seeded with the following pre-configured testing profiles:
 
 | Name | Username / Email | Role | Scope / Department |
 | :--- | :--- | :--- | :--- |
-| **Hamis Juma** | `admin@moe.go.tz` | System Administrator | ICT Unit |
-| **Dr. Leonard Akwilapo** | `executive@moe.go.tz` | MoEST Leadership | Permanent Secretary Office |
-| **Neema Temu** | `evaluator.national@moe.go.tz` | National M&E Officer | M&E Section |
-| **Said Mwinyi** | `reo.dodoma@moe.go.tz` | Regional M&E Officer | Dodoma Regional Office |
-| **Mary Chisunga** | `deo.dodoma@moe.go.tz` | District Education Officer | Bahi District Council |
-| **Peter Temba** | `school.entry@moe.go.tz` | School Data Entry Officer | Bahi Primary School |
+| **Hamis Juma** | `admin@moe.go.tz` | System Administrator | 🌍 Super User |
+| **Dr. Leonard Akwilapo** | `executive@moe.go.tz` | MoEST Leadership | 🌍 Super User |
+| **Neema Temu** | `evaluator.national@moe.go.tz` | National M&E Officer | 🌍 Super User |
+| **Said Mwinyi** | `reo.dodoma@moe.go.tz` | Regional M&E Officer | 📍 Dodoma Region |
+| **Mary Chisunga** | `deo.dodoma@moe.go.tz` | District Education Officer | 📍 Dodoma Region |
+| **Peter Temba** | `school.entry@moe.go.tz` | School Data Entry Officer | 📍 Dodoma Region |

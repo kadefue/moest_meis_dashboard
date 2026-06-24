@@ -23,11 +23,41 @@ export default function AdminScreen({ user }) {
   const [projectNodes, setProjectNodes] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
 
+  // Geography States
+  const [regions, setRegions] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [newRegId, setNewRegId] = useState('');
+  const [newRegName, setNewRegName] = useState('');
+  const [newDistId, setNewDistId] = useState('');
+  const [newDistRegId, setNewDistRegId] = useState('');
+  const [newDistName, setNewDistName] = useState('');
+
+  // Organization States
+  const [institutions, setInstitutions] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [newInstId, setNewInstId] = useState('');
+  const [newInstName, setNewInstName] = useState('');
+  const [newInstType, setNewInstType] = useState('Ministry');
+  const [newInstRegId, setNewInstRegId] = useState('');
+  const [newInstDistId, setNewInstDistId] = useState('');
+  const [newDeptId, setNewDeptId] = useState('');
+  const [newDeptInstId, setNewDeptInstId] = useState('');
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newSecId, setNewSecId] = useState('');
+  const [newSecDeptId, setNewSecDeptId] = useState('');
+  const [newSecName, setNewSecName] = useState('');
+
   // User Management Form States
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [userFormName, setUserFormName] = useState('');
   const [userFormEmail, setUserFormEmail] = useState('');
   const [userFormDept, setUserFormDept] = useState('');
+  const [userFormScopeType, setUserFormScopeType] = useState('super');
+  const [userFormRegion, setUserFormRegion] = useState('');
+  const [userFormProject, setUserFormProject] = useState('');
+  const [userFormInst, setUserFormInst] = useState('');
+  const [userFormSection, setUserFormSection] = useState('');
   const [userFormRole, setUserFormRole] = useState('School Data Entry Officer');
   const [userFormPassword, setUserFormPassword] = useState('');
   const [userFormPermissions, setUserFormPermissions] = useState(['view_dashboard', 'submit_data']);
@@ -95,6 +125,11 @@ export default function AdminScreen({ user }) {
   useEffect(() => {
     setUsers(getTable('users'));
     setIndicators(getTable('indicators'));
+    setRegions(getTable('regions'));
+    setDistricts(getTable('districts'));
+    setInstitutions(getTable('institutions'));
+    setDepartments(getTable('departments'));
+    setSections(getTable('sections'));
     const fws = getTable('frameworks');
     setFrameworks(fws);
     setNodes(getTable('nodes'));
@@ -287,10 +322,25 @@ export default function AdminScreen({ user }) {
     setIsEditingUser(true);
     setUserFormName(targetUser.name);
     setUserFormEmail(targetUser.username);
-    setUserFormDept(targetUser.dept || '');
+    setUserFormDept(targetUser.dept_id || '');
     setUserFormRole(targetUser.role);
     setUserFormPermissions(targetUser.permissions || []);
     setUserFormPassword('');
+    
+    if (targetUser.is_super_user) {
+      setUserFormScopeType('super');
+    } else if (targetUser.region_id) {
+      setUserFormScopeType('regional');
+      setUserFormRegion(targetUser.region_id);
+    } else if (targetUser.project_id) {
+      setUserFormScopeType('project');
+      setUserFormProject(targetUser.project_id);
+    } else {
+      setUserFormScopeType('organizational');
+      setUserFormInst(targetUser.inst_id || '');
+      setUserFormSection(targetUser.section_id || '');
+    }
+
     setShowUserModal(true);
   };
 
@@ -302,6 +352,13 @@ export default function AdminScreen({ user }) {
     setUserFormRole('School Data Entry Officer');
     setUserFormPermissions(['view_dashboard', 'submit_data']);
     setUserFormPassword('');
+    
+    setUserFormScopeType('super');
+    setUserFormRegion('');
+    setUserFormProject('');
+    setUserFormInst('');
+    setUserFormSection('');
+
     setShowUserModal(false);
   };
 
@@ -313,16 +370,26 @@ export default function AdminScreen({ user }) {
     }
 
     const currentUsers = getTable('users');
+    
+    const baseUser = {
+      name: userFormName,
+      role: userFormRole,
+      permissions: userFormPermissions,
+      is_super_user: userFormScopeType === 'super',
+      region_id: userFormScopeType === 'regional' ? userFormRegion : null,
+      project_id: userFormScopeType === 'project' ? userFormProject : null,
+      inst_id: userFormScopeType === 'organizational' ? userFormInst : null,
+      dept_id: userFormScopeType === 'organizational' ? userFormDept : null,
+      section_id: userFormScopeType === 'organizational' ? userFormSection : null,
+      dept: '' // Legacy fallback
+    };
 
     if (isEditingUser) {
       const updated = currentUsers.map(u => {
         if (u.username.toLowerCase() === userFormEmail.toLowerCase()) {
           const updatedUser = {
             ...u,
-            name: userFormName,
-            role: userFormRole,
-            dept: userFormDept,
-            permissions: userFormPermissions
+            ...baseUser
           };
           if (userFormPassword) {
             updatedUser.password = userFormPassword;
@@ -333,14 +400,7 @@ export default function AdminScreen({ user }) {
       });
 
       saveTable('users', updated);
-      setUsers(updated.map(u => ({
-        id: u.id,
-        name: u.name,
-        username: u.username,
-        role: u.role,
-        dept: u.dept,
-        permissions: u.permissions
-      })));
+      setUsers(updated);
       logAction(user.username, 'UPDATE', 'User Scopes', `Updated role/permissions for user ${userFormEmail}`);
       addToast({ message: 'User settings updated successfully.', type: 'success' });
       handleCancelEditUser();
@@ -351,24 +411,14 @@ export default function AdminScreen({ user }) {
       }
 
       const newUser = {
-        name: userFormName,
+        ...baseUser,
         username: userFormEmail,
-        role: userFormRole,
-        dept: userFormDept,
-        permissions: userFormPermissions,
         password: userFormPassword || 'password123'
       };
 
       const updated = [...currentUsers, newUser];
       saveTable('users', updated);
-      setUsers(updated.map(u => ({
-        id: u.id,
-        name: u.name,
-        username: u.username,
-        role: u.role,
-        dept: u.dept,
-        permissions: u.permissions
-      })));
+      setUsers(updated);
       logAction(user.username, 'CREATE', 'User registration', `Registered new user: ${userFormEmail} as ${userFormRole}`);
       addToast({ message: 'User registered successfully.', type: 'success' });
       handleCancelEditUser();
@@ -399,6 +449,150 @@ export default function AdminScreen({ user }) {
       })));
       logAction(user.username, 'DELETE', 'User management', `Deleted user account: ${usernameToDelete}`);
       addToast({ message: 'User account deleted successfully.', type: 'success' });
+    })();
+  };
+
+  const handleCreateRegion = (e) => {
+    e.preventDefault();
+    if (!newRegId || !newRegName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    const current = getTable('regions');
+    if (current.some(r => r.region_id.toLowerCase() === newRegId.toLowerCase())) return addToast({ message: 'Region ID exists', type: 'warning' });
+    const newEntry = { region_id: newRegId.toUpperCase(), name: newRegName };
+    const updated = [...current, newEntry];
+    saveTable('regions', updated);
+    setRegions(updated);
+    logAction(user.username, 'CREATE', 'Geography', `Added region: ${newRegName}`);
+    setNewRegId(''); setNewRegName('');
+    addToast({ message: 'Region created', type: 'success' });
+  };
+
+  const handleDeleteRegion = (id) => {
+    if (!isAuthorized) return addToast({ message: 'Permission Error', type: 'warning' });
+    if (districts.some(d => d.region_id === id)) return addToast({ message: 'Cannot delete region with districts', type: 'warning' });
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Region', message: 'Are you sure you want to delete this region?' });
+      if (!ok) return;
+      const updated = regions.filter(r => r.region_id !== id);
+      saveTable('regions', updated);
+      setRegions(updated);
+      logAction(user.username, 'DELETE', 'Geography', `Deleted region: ${id}`);
+      addToast({ message: 'Region deleted', type: 'success' });
+    })();
+  };
+
+  const handleCreateDistrict = (e) => {
+    e.preventDefault();
+    if (!newDistId || !newDistRegId || !newDistName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    const current = getTable('districts');
+    if (current.some(d => d.district_id.toLowerCase() === newDistId.toLowerCase())) return addToast({ message: 'District ID exists', type: 'warning' });
+    const newEntry = { district_id: newDistId.toUpperCase(), region_id: newDistRegId, name: newDistName };
+    const updated = [...current, newEntry];
+    saveTable('districts', updated);
+    setDistricts(updated);
+    logAction(user.username, 'CREATE', 'Geography', `Added district: ${newDistName}`);
+    setNewDistId(''); setNewDistName(''); setNewDistRegId('');
+    addToast({ message: 'District created', type: 'success' });
+  };
+
+  const handleDeleteDistrict = (id) => {
+    if (!isAuthorized) return addToast({ message: 'Permission Error', type: 'warning' });
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete District', message: 'Are you sure you want to delete this district?' });
+      if (!ok) return;
+      const updated = districts.filter(d => d.district_id !== id);
+      saveTable('districts', updated);
+      setDistricts(updated);
+      logAction(user.username, 'DELETE', 'Geography', `Deleted district: ${id}`);
+      addToast({ message: 'District deleted', type: 'success' });
+    })();
+  };
+
+  const handleCreateInstitution = (e) => {
+    e.preventDefault();
+    if (!newInstId || !newInstName || !newInstType) return addToast({ message: 'Please fill all required fields', type: 'warning' });
+    const current = getTable('institutions');
+    if (current.some(i => i.inst_id.toLowerCase() === newInstId.toLowerCase())) return addToast({ message: 'Institution ID exists', type: 'warning' });
+    const newEntry = { 
+      inst_id: newInstId.toUpperCase(), 
+      name: newInstName, 
+      type: newInstType, 
+      region_id: newInstRegId || null, 
+      district_id: newInstDistId || null 
+    };
+    const updated = [...current, newEntry];
+    saveTable('institutions', updated);
+    setInstitutions(updated);
+    logAction(user.username, 'CREATE', 'Organization', `Added institution: ${newInstName}`);
+    setNewInstId(''); setNewInstName(''); setNewInstRegId(''); setNewInstDistId('');
+    addToast({ message: 'Institution created', type: 'success' });
+  };
+
+  const handleDeleteInstitution = (id) => {
+    if (!isAuthorized) return addToast({ message: 'Permission Error', type: 'warning' });
+    if (departments.some(d => d.inst_id === id)) return addToast({ message: 'Cannot delete institution with departments', type: 'warning' });
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Institution', message: 'Are you sure you want to delete this institution?' });
+      if (!ok) return;
+      const updated = institutions.filter(i => i.inst_id !== id);
+      saveTable('institutions', updated);
+      setInstitutions(updated);
+      logAction(user.username, 'DELETE', 'Organization', `Deleted institution: ${id}`);
+      addToast({ message: 'Institution deleted', type: 'success' });
+    })();
+  };
+
+  const handleCreateDepartment = (e) => {
+    e.preventDefault();
+    if (!newDeptId || !newDeptInstId || !newDeptName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    const current = getTable('departments');
+    if (current.some(d => d.dept_id.toLowerCase() === newDeptId.toLowerCase())) return addToast({ message: 'Department ID exists', type: 'warning' });
+    const newEntry = { dept_id: newDeptId.toUpperCase(), inst_id: newDeptInstId, name: newDeptName };
+    const updated = [...current, newEntry];
+    saveTable('departments', updated);
+    setDepartments(updated);
+    logAction(user.username, 'CREATE', 'Organization', `Added department: ${newDeptName}`);
+    setNewDeptId(''); setNewDeptName(''); setNewDeptInstId('');
+    addToast({ message: 'Department created', type: 'success' });
+  };
+
+  const handleDeleteDepartment = (id) => {
+    if (!isAuthorized) return addToast({ message: 'Permission Error', type: 'warning' });
+    if (sections.some(s => s.dept_id === id)) return addToast({ message: 'Cannot delete department with sections', type: 'warning' });
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Department', message: 'Are you sure you want to delete this department?' });
+      if (!ok) return;
+      const updated = departments.filter(d => d.dept_id !== id);
+      saveTable('departments', updated);
+      setDepartments(updated);
+      logAction(user.username, 'DELETE', 'Organization', `Deleted department: ${id}`);
+      addToast({ message: 'Department deleted', type: 'success' });
+    })();
+  };
+
+  const handleCreateSection = (e) => {
+    e.preventDefault();
+    if (!newSecId || !newSecDeptId || !newSecName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    const current = getTable('sections');
+    if (current.some(s => s.section_id.toLowerCase() === newSecId.toLowerCase())) return addToast({ message: 'Section ID exists', type: 'warning' });
+    const newEntry = { section_id: newSecId.toUpperCase(), dept_id: newSecDeptId, name: newSecName };
+    const updated = [...current, newEntry];
+    saveTable('sections', updated);
+    setSections(updated);
+    logAction(user.username, 'CREATE', 'Organization', `Added section: ${newSecName}`);
+    setNewSecId(''); setNewSecName(''); setNewSecDeptId('');
+    addToast({ message: 'Section created', type: 'success' });
+  };
+
+  const handleDeleteSection = (id) => {
+    if (!isAuthorized) return addToast({ message: 'Permission Error', type: 'warning' });
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Section', message: 'Are you sure you want to delete this section?' });
+      if (!ok) return;
+      const updated = sections.filter(s => s.section_id !== id);
+      saveTable('sections', updated);
+      setSections(updated);
+      logAction(user.username, 'DELETE', 'Organization', `Deleted section: ${id}`);
+      addToast({ message: 'Section deleted', type: 'success' });
     })();
   };
 
@@ -884,6 +1078,34 @@ export default function AdminScreen({ user }) {
           style={{ 
             borderRadius: '0', 
             background: 'transparent', 
+            color: activeTab === 'geography' ? 'var(--primary)' : 'var(--neutral-600)',
+            borderBottom: activeTab === 'geography' ? '3px solid var(--primary)' : '3px solid transparent',
+            fontWeight: 600,
+            padding: '12px 20px'
+          }} 
+          onClick={() => setActiveTab('geography')}
+        >
+          🌍 Geography
+        </button>
+        <button 
+          className="btn" 
+          style={{ 
+            borderRadius: '0', 
+            background: 'transparent', 
+            color: activeTab === 'organization' ? 'var(--primary)' : 'var(--neutral-600)',
+            borderBottom: activeTab === 'organization' ? '3px solid var(--primary)' : '3px solid transparent',
+            fontWeight: 600,
+            padding: '12px 20px'
+          }} 
+          onClick={() => setActiveTab('organization')}
+        >
+          🏢 Organization
+        </button>
+        <button 
+          className="btn" 
+          style={{ 
+            borderRadius: '0', 
+            background: 'transparent', 
             color: activeTab === 'audit' ? 'var(--primary)' : 'var(--neutral-600)',
             borderBottom: activeTab === 'audit' ? '3px solid var(--primary)' : '3px solid transparent',
             fontWeight: 600,
@@ -971,7 +1193,7 @@ export default function AdminScreen({ user }) {
                     <th>Name</th>
                     <th>Email / Username</th>
                     <th>Role</th>
-                    <th>Division</th>
+                    <th>Scope / Entity</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -981,7 +1203,15 @@ export default function AdminScreen({ user }) {
                       <td style={{ fontWeight: 600 }}>{u.name}</td>
                       <td>{u.username}</td>
                       <td><span className="badge badge-info">{u.role}</span></td>
-                      <td>{u.dept}</td>
+                      <td>
+                        {u.is_super_user && <span style={{ color: 'var(--success)', fontWeight: 600 }}>🌍 Super User</span>}
+                        {!u.is_super_user && u.region_id && <span>📍 Regional ({regions.find(r => r.region_id === u.region_id)?.name || u.region_id})</span>}
+                        {!u.is_super_user && u.project_id && <span>📁 Project ({projects.find(p => p.project_id === u.project_id)?.name || u.project_id})</span>}
+                        {!u.is_super_user && !u.region_id && !u.project_id && u.inst_id && (
+                          <span>🏢 {institutions.find(i => i.inst_id === u.inst_id)?.name || u.inst_id}</span>
+                        )}
+                        {!u.is_super_user && !u.region_id && !u.project_id && !u.inst_id && <span>{u.dept || 'Unassigned'}</span>}
+                      </td>
                       <td>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button 
@@ -1180,9 +1410,64 @@ export default function AdminScreen({ user }) {
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Department / Division</label>
-                  <input type="text" className="form-control" placeholder="e.g. Primary Education Division" value={userFormDept} onChange={e => setUserFormDept(e.target.value)} disabled={!isAuthorized} />
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>User Scope</label>
+                  <select className="form-control" value={userFormScopeType} onChange={e => setUserFormScopeType(e.target.value)} disabled={!isAuthorized}>
+                    <option value="super">Super User (View All)</option>
+                    <option value="regional">Regional User</option>
+                    <option value="organizational">Institutional/Organizational User</option>
+                    <option value="project">Project User</option>
+                  </select>
                 </div>
+                
+                {userFormScopeType === 'regional' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Region</label>
+                    <select className="form-control" value={userFormRegion} onChange={e => setUserFormRegion(e.target.value)} required disabled={!isAuthorized}>
+                      <option value="">-- Select Region --</option>
+                      {regions.map(r => <option key={r.region_id} value={r.region_id}>{r.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                
+                {userFormScopeType === 'project' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Project</label>
+                    <select className="form-control" value={userFormProject} onChange={e => setUserFormProject(e.target.value)} required disabled={!isAuthorized}>
+                      <option value="">-- Select Project --</option>
+                      {projects.map(p => <option key={p.project_id} value={p.project_id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                
+                {userFormScopeType === 'organizational' && (
+                  <>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Institution</label>
+                      <select className="form-control" value={userFormInst} onChange={e => setUserFormInst(e.target.value)} required disabled={!isAuthorized}>
+                        <option value="">-- Select Institution --</option>
+                        {institutions.map(i => <option key={i.inst_id} value={i.inst_id}>{i.name}</option>)}
+                      </select>
+                    </div>
+                    {userFormInst && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Department (Optional)</label>
+                        <select className="form-control" value={userFormDept} onChange={e => setUserFormDept(e.target.value)} disabled={!isAuthorized}>
+                          <option value="">-- All Departments --</option>
+                          {departments.filter(d => d.inst_id === userFormInst).map(d => <option key={d.dept_id} value={d.dept_id}>{d.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                    {userFormDept && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Section (Optional)</label>
+                        <select className="form-control" value={userFormSection} onChange={e => setUserFormSection(e.target.value)} disabled={!isAuthorized}>
+                          <option value="">-- All Sections --</option>
+                          {sections.filter(s => s.dept_id === userFormDept).map(s => <option key={s.section_id} value={s.section_id}>{s.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Assigned Role</label>
@@ -1649,7 +1934,223 @@ export default function AdminScreen({ user }) {
         </div>
       )}
 
+      {/* GEOGRAPHY SETUP */}
+      {activeTab === 'geography' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+          {!isAuthorized && (
+            <div style={{ padding: '16px', background: 'var(--warning)', color: '#fff', borderRadius: 'var(--radius-md)', fontWeight: 600 }}>
+              Viewing Mode: You do not have permission to manage geographic settings.
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <div className="card" style={{ flex: 1 }}>
+              <h3>Regions</h3>
+              {isAuthorized && (
+                <form onSubmit={handleCreateRegion} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+                  <input className="form-control" placeholder="Region ID (e.g. REG-001)" value={newRegId} onChange={e => setNewRegId(e.target.value)} required />
+                  <input className="form-control" placeholder="Region Name" value={newRegName} onChange={e => setNewRegName(e.target.value)} required />
+                  <button type="submit" className="btn btn-primary">Add Region</button>
+                </form>
+              )}
+              <div className="table-responsive">
+                <table>
+                  <thead>
+                    <tr><th>ID</th><th>Region Name</th>{isAuthorized && <th>Action</th>}</tr>
+                  </thead>
+                  <tbody>
+                    {regions.map(r => (
+                      <tr key={r.region_id}>
+                        <td>{r.region_id}</td>
+                        <td>{r.name}</td>
+                        {isAuthorized && (
+                          <td>
+                            <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--error)', borderColor: 'var(--error)' }} onClick={() => handleDeleteRegion(r.region_id)}>Delete</button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    {regions.length === 0 && <tr><td colSpan={isAuthorized ? 3 : 2} style={{ textAlign: 'center', color: 'var(--neutral-500)' }}>No regions found.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="card" style={{ flex: 1 }}>
+              <h3>Districts</h3>
+              {isAuthorized && (
+                <form onSubmit={handleCreateDistrict} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                  <input className="form-control" style={{ flex: '1 1 45%' }} placeholder="District ID (e.g. DIST-001)" value={newDistId} onChange={e => setNewDistId(e.target.value)} required />
+                  <select className="form-control" style={{ flex: '1 1 45%' }} value={newDistRegId} onChange={e => setNewDistRegId(e.target.value)} required>
+                    <option value="">Select Region...</option>
+                    {regions.map(r => <option key={r.region_id} value={r.region_id}>{r.name}</option>)}
+                  </select>
+                  <input className="form-control" style={{ flex: '1 1 100%' }} placeholder="District Name" value={newDistName} onChange={e => setNewDistName(e.target.value)} required />
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add District</button>
+                </form>
+              )}
+              <div className="table-responsive">
+                <table>
+                  <thead>
+                    <tr><th>ID</th><th>District Name</th><th>Region</th>{isAuthorized && <th>Action</th>}</tr>
+                  </thead>
+                  <tbody>
+                    {districts.map(d => {
+                      const parent = regions.find(r => r.region_id === d.region_id);
+                      return (
+                        <tr key={d.district_id}>
+                          <td>{d.district_id}</td>
+                          <td>{d.name}</td>
+                          <td>{parent ? parent.name : d.region_id}</td>
+                          {isAuthorized && (
+                            <td>
+                              <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--error)', borderColor: 'var(--error)' }} onClick={() => handleDeleteDistrict(d.district_id)}>Delete</button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {districts.length === 0 && <tr><td colSpan={isAuthorized ? 4 : 3} style={{ textAlign: 'center', color: 'var(--neutral-500)' }}>No districts found.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ORGANIZATION SETUP */}
+      {activeTab === 'organization' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+          {!isAuthorized && (
+            <div style={{ padding: '16px', background: 'var(--warning)', color: '#fff', borderRadius: 'var(--radius-md)', fontWeight: 600 }}>
+              Viewing Mode: You do not have permission to manage organization settings.
+            </div>
+          )}
+          
+          <div className="card">
+            <h3>Institutions</h3>
+            {isAuthorized && (
+              <form onSubmit={handleCreateInstitution} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                <input className="form-control" style={{ flex: '1 1 200px' }} placeholder="Inst ID (e.g. INST-001)" value={newInstId} onChange={e => setNewInstId(e.target.value)} required />
+                <input className="form-control" style={{ flex: '1 1 200px' }} placeholder="Institution Name" value={newInstName} onChange={e => setNewInstName(e.target.value)} required />
+                <select className="form-control" style={{ flex: '1 1 200px' }} value={newInstType} onChange={e => setNewInstType(e.target.value)}>
+                  <option value="Ministry">Ministry</option>
+                  <option value="Agency">Agency</option>
+                  <option value="Department">Department</option>
+                </select>
+                <button type="submit" className="btn btn-primary" style={{ flex: '1 1 200px' }}>Add Institution</button>
+              </form>
+            )}
+            <div className="table-responsive">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>Name</th><th>Type</th>{isAuthorized && <th>Action</th>}</tr>
+                </thead>
+                <tbody>
+                  {institutions.map(i => (
+                    <tr key={i.inst_id}>
+                      <td>{i.inst_id}</td>
+                      <td>{i.name}</td>
+                      <td><span className="badge badge-info">{i.type}</span></td>
+                      {isAuthorized && (
+                        <td>
+                          <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--error)', borderColor: 'var(--error)' }} onClick={() => handleDeleteInstitution(i.inst_id)}>Delete</button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                  {institutions.length === 0 && <tr><td colSpan={isAuthorized ? 4 : 3} style={{ textAlign: 'center', color: 'var(--neutral-500)' }}>No institutions found.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '24px' }}>
+            <div className="card" style={{ flex: 1 }}>
+              <h3>Departments</h3>
+              {isAuthorized && (
+                <form onSubmit={handleCreateDepartment} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                  <input className="form-control" style={{ flex: '1 1 45%' }} placeholder="Dept ID (e.g. DEPT-001)" value={newDeptId} onChange={e => setNewDeptId(e.target.value)} required />
+                  <select className="form-control" style={{ flex: '1 1 45%' }} value={newDeptInstId} onChange={e => setNewDeptInstId(e.target.value)} required>
+                    <option value="">Select Institution...</option>
+                    {institutions.map(i => <option key={i.inst_id} value={i.inst_id}>{i.name}</option>)}
+                  </select>
+                  <input className="form-control" style={{ flex: '1 1 100%' }} placeholder="Department Name" value={newDeptName} onChange={e => setNewDeptName(e.target.value)} required />
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Department</button>
+                </form>
+              )}
+              <div className="table-responsive">
+                <table>
+                  <thead>
+                    <tr><th>ID</th><th>Department Name</th><th>Institution</th>{isAuthorized && <th>Action</th>}</tr>
+                  </thead>
+                  <tbody>
+                    {departments.map(d => {
+                      const parent = institutions.find(i => i.inst_id === d.inst_id);
+                      return (
+                        <tr key={d.dept_id}>
+                          <td>{d.dept_id}</td>
+                          <td>{d.name}</td>
+                          <td>{parent ? parent.name : d.inst_id}</td>
+                          {isAuthorized && (
+                            <td>
+                              <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--error)', borderColor: 'var(--error)' }} onClick={() => handleDeleteDepartment(d.dept_id)}>Delete</button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {departments.length === 0 && <tr><td colSpan={isAuthorized ? 4 : 3} style={{ textAlign: 'center', color: 'var(--neutral-500)' }}>No departments found.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="card" style={{ flex: 1 }}>
+              <h3>Sections</h3>
+              {isAuthorized && (
+                <form onSubmit={handleCreateSection} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+                  <input className="form-control" style={{ flex: '1 1 45%' }} placeholder="Sec ID (e.g. SEC-001)" value={newSecId} onChange={e => setNewSecId(e.target.value)} required />
+                  <select className="form-control" style={{ flex: '1 1 45%' }} value={newSecDeptId} onChange={e => setNewSecDeptId(e.target.value)} required>
+                    <option value="">Select Department...</option>
+                    {departments.map(d => <option key={d.dept_id} value={d.dept_id}>{d.name}</option>)}
+                  </select>
+                  <input className="form-control" style={{ flex: '1 1 100%' }} placeholder="Section Name" value={newSecName} onChange={e => setNewSecName(e.target.value)} required />
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Section</button>
+                </form>
+              )}
+              <div className="table-responsive">
+                <table>
+                  <thead>
+                    <tr><th>ID</th><th>Section Name</th><th>Department</th>{isAuthorized && <th>Action</th>}</tr>
+                  </thead>
+                  <tbody>
+                    {sections.map(s => {
+                      const parent = departments.find(d => d.dept_id === s.dept_id);
+                      return (
+                        <tr key={s.section_id}>
+                          <td>{s.section_id}</td>
+                          <td>{s.name}</td>
+                          <td>{parent ? parent.name : s.dept_id}</td>
+                          {isAuthorized && (
+                            <td>
+                              <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--error)', borderColor: 'var(--error)' }} onClick={() => handleDeleteSection(s.section_id)}>Delete</button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {sections.length === 0 && <tr><td colSpan={isAuthorized ? 4 : 3} style={{ textAlign: 'center', color: 'var(--neutral-500)' }}>No sections found.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4. AUDIT */}
+
       {activeTab === 'audit' && (
         <div className="card">
           <h3>e-GA Immutable Security Audit trail</h3>
