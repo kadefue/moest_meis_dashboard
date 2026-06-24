@@ -1,0 +1,33 @@
+# Global OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+/frontend/dist/
+
+# Laravel / Backend
+/backend/laravel-app/.env
+/backend/laravel-app/storage/*.key
+/backend/laravel-app/storage/framework/cache/data/*
+/backend/laravel-app/storage/framework/sessions/*
+/backend/laravel-app/storage/framework/testing/*
+/backend/laravel-app/storage/framework/views/*
+/backend/laravel-app/vendor/
+/backend/laravel-app/bootstrap/cache/*
+/backend/laravel-app/public/storage
+/backend/laravel-app/.phpunit.result.cache
+/backend/laravel-app/database/database.sqlite-journal
+
+# React Frontend environment files
+/frontend/.env
+/frontend/.env.local
+/frontend/.env.development.local
+/frontend/.env.test.local
+/frontend/.env.production.local
+/frontend/node_modules/

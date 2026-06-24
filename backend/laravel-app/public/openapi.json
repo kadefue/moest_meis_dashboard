@@ -1,0 +1,371 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "MoEST Monitoring & Evaluation API Portal",
+    "version": "1.0.0",
+    "description": "Unified Multi-Framework Results-Based Management (RBM) API engine for MoEST. Coordinates indicators, targets, and actual education progress data streams.",
+    "contact": {
+      "name": "MoEST ICT Support",
+      "email": "ict.support@moe.go.tz"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8000",
+      "description": "Local Development Server"
+    }
+  ],
+  "paths": {
+    "/api/summary": {
+      "get": {
+        "summary": "Get system-wide summary metrics",
+        "description": "Returns counts for total activities, indicators tracked, and pending data entries.",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "activities_total": { "type": "integer", "example": 1245 },
+                        "indicators_tracked": { "type": "integer", "example": 342 },
+                        "reports_pending": { "type": "integer", "example": 12 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/performance": {
+      "get": {
+        "summary": "Get indicator performance aggregated",
+        "description": "Calculates target met percentage and splits entries by region for a given KPI.",
+        "parameters": [
+          {
+            "name": "indicator_id",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "IND-001" },
+            "description": "Indicator Code (e.g. IND-001, IND-002)"
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "default": "2024/25" },
+            "description": "Financial Period (e.g. 2024/25)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated calculations returned",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "indicator_id": { "type": "string", "example": "IND-001" },
+                        "name": { "type": "string", "example": "Net Enrollment Rate (NER) - Primary" },
+                        "type": { "type": "string", "example": "Outcome" },
+                        "national_actual": { "type": "number", "example": 95.8 },
+                        "national_target": { "type": "number", "example": 96.5 },
+                        "baseline_value": { "type": "number", "example": 94.2 },
+                        "attainment_percentage": { "type": "number", "example": 99.3 },
+                        "status": { "type": "string", "example": "On Track" },
+                        "regional_entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "data_id": { "type": "string", "example": "DAT-001" },
+                              "region": { "type": "string", "example": "Dar es Salaam" },
+                              "district": { "type": "string", "example": "Ilala" },
+                              "actual_value": { "type": "number", "example": 95.8 },
+                              "target_value": { "type": "number", "example": 96.5 },
+                              "deviation": { "type": "number", "example": -0.7 },
+                              "status": { "type": "string", "example": "Approved" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/frameworks": {
+      "get": {
+        "summary": "List all strategic frameworks",
+        "responses": {
+          "200": {
+            "description": "Frameworks registry payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "framework_id": { "type": "string", "example": "FW-001" },
+                          "name": { "type": "string", "example": "ESDP III" },
+                          "start_year": { "type": "integer", "example": 2024 },
+                          "end_year": { "type": "integer", "example": 2029 }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new strategic framework",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["framework_id", "name", "start_year", "end_year"],
+                "properties": {
+                  "framework_id": { "type": "string", "example": "FW-004" },
+                  "name": { "type": "string", "example": "Higher Education Action Plan" },
+                  "start_year": { "type": "integer", "example": 2026 },
+                  "end_year": { "type": "integer", "example": 2031 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully"
+          }
+        }
+      }
+    },
+    "/api/frameworks/{id}/nodes": {
+      "get": {
+        "summary": "Get nodes for a strategic framework",
+        "description": "Returns all nodes belonging to the specified strategic framework.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Framework ID (e.g. FW-001)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nodes list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "node_id": { "type": "string", "example": "N-101" },
+                          "framework_id": { "type": "string", "example": "FW-001" },
+                          "parent_node_id": { "type": "string", "example": null },
+                          "level_type": { "type": "string", "example": "Sub-sector" },
+                          "name": { "type": "string", "example": "Primary Education" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new framework node",
+        "description": "Creates a new framework node nested under the specified strategic framework.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Framework ID (e.g. FW-001)"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["node_id", "level_type", "name"],
+                "properties": {
+                  "node_id": { "type": "string", "example": "N-106" },
+                  "parent_node_id": { "type": "string", "example": "N-101" },
+                  "level_type": { "type": "string", "example": "Focus Area" },
+                  "name": { "type": "string", "example": "Teacher Capacity Development" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created successfully"
+          }
+        }
+      }
+    },
+    "/api/submit": {
+      "post": {
+        "summary": "Submit indicator actual data",
+        "description": "Logs a new numerical progress indicator entry. Inserts an immutable event to the e-GA audit log.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["indicator_id", "period", "actual_value", "region", "submitted_by", "source_category"],
+                "properties": {
+                  "indicator_id": { "type": "string", "example": "IND-001" },
+                  "period": { "type": "string", "example": "2024/25 Q4" },
+                  "actual_value": { "type": "number", "example": 96.2 },
+                  "region": { "type": "string", "example": "Dodoma" },
+                  "district": { "type": "string", "example": "Bahi" },
+                  "ward": { "type": "string", "example": "Bahi Ward" },
+                  "submitted_by": { "type": "string", "example": "deo.dodoma@moe.go.tz" },
+                  "source_category": { "type": "string", "example": "Government" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Logged successfully"
+          }
+        }
+      }
+    },
+    "/api/submissions/{id}/verify": {
+      "post": {
+        "summary": "Verify a data submission entry",
+        "description": "Transitions record status to 'Verified' for M&E review.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Submission record ID (e.g. DAT-001)"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "verifier_username": { "type": "string", "example": "evaluator.national@moe.go.tz" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Verification status updated" }
+        }
+      }
+    },
+    "/api/submissions/{id}/approve": {
+      "post": {
+        "summary": "Approve a verified submission",
+        "description": "Transitions record status to 'Approved' making it active in executive aggregations.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Submission record ID (e.g. DAT-001)"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approver_username": { "type": "string", "example": "executive@moe.go.tz" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Submission approved" }
+        }
+      }
+    },
+    "/api/audit-logs": {
+      "get": {
+        "summary": "Get e-GA system audit trail logs",
+        "description": "Returns logs of all system-wide updates, sync actions, and user session logins.",
+        "responses": {
+          "200": {
+            "description": "Audit trail logs payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "log_id": { "type": "integer", "example": 1 },
+                          "timestamp": { "type": "string", "example": "2026-06-23T10:00:00Z" },
+                          "username": { "type": "string", "example": "admin@moe.go.tz" },
+                          "action": { "type": "string", "example": "CREATE" },
+                          "entity": { "type": "string", "example": "Indicator" },
+                          "details": { "type": "string", "example": "Added new indicator IND-004" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
