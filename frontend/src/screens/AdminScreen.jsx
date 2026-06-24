@@ -71,6 +71,11 @@ export default function AdminScreen({ user }) {
   const [newPrjNodeIndicatorId, setNewPrjNodeIndicatorId] = useState('');
   const [prjLevelTypes, setPrjLevelTypes] = useState(['Component', 'Sub-component', 'Key Result Area', 'Activity Group']);
 
+  // Modal for adding custom level types (framework or project)
+  const [showLevelTypeModal, setShowLevelTypeModal] = useState(false);
+  const [levelTypeModalTarget, setLevelTypeModalTarget] = useState('framework');
+  const [levelTypeInput, setLevelTypeInput] = useState('');
+
   const [integrations, setIntegrations] = useState([
     { system: 'SAS (School Registry API)', status: 'Active', lastSync: '2026-06-23T13:45:00Z', recordsSynced: 1240, errors: 0 },
     { system: 'ESMIS (HR/Personnel API)', status: 'Active', lastSync: '2026-06-23T11:20:00Z', recordsSynced: 3400, errors: 0 },
@@ -117,6 +122,42 @@ export default function AdminScreen({ user }) {
 
   const { addToast } = useToast();
   const { showConfirm } = useConfirm();
+
+  const openAddLevelTypeModal = (target) => {
+    setLevelTypeModalTarget(target);
+    setLevelTypeInput('');
+    setShowLevelTypeModal(true);
+  };
+
+  const handleSaveLevelType = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const trimmed = (levelTypeInput || '').trim();
+    if (!trimmed) {
+      addToast({ message: 'Please enter a level type name.', type: 'warning' });
+      return;
+    }
+    if (levelTypeModalTarget === 'framework') {
+      if (levelTypes.includes(trimmed)) {
+        addToast({ message: 'Level Type already exists!', type: 'warning' });
+        return;
+      }
+      const updated = [...levelTypes, trimmed];
+      setLevelTypes(updated);
+      localStorage.setItem('me_level_types', JSON.stringify(updated));
+      setNewNodeLevelType(trimmed);
+    } else {
+      if (prjLevelTypes.includes(trimmed)) {
+        addToast({ message: 'Level Type already exists!', type: 'warning' });
+        return;
+      }
+      const updated = [...prjLevelTypes, trimmed];
+      setPrjLevelTypes(updated);
+      localStorage.setItem('me_prj_level_types', JSON.stringify(updated));
+      setNewPrjNodeLevelType(trimmed);
+    }
+    addToast({ message: 'Level Type added.', type: 'success' });
+    setShowLevelTypeModal(false);
+  };
 
   const handleToggleRolePermission = (perm) => {
     setRoleFormPermissions(prev => 
@@ -1109,6 +1150,20 @@ export default function AdminScreen({ user }) {
               </form>
             </Modal>
           )}
+          {showLevelTypeModal && (
+            <Modal title="Add Level Type" onClose={() => setShowLevelTypeModal(false)} footer={null}>
+              <form onSubmit={handleSaveLevelType} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Level Type Name</label>
+                  <input type="text" className="form-control" placeholder="e.g. Sub-Programme" value={levelTypeInput} onChange={e => setLevelTypeInput(e.target.value)} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowLevelTypeModal(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary">Save</button>
+                </div>
+              </form>
+            </Modal>
+          )}
         </div>
       )}
 
@@ -1682,20 +1737,7 @@ export default function AdminScreen({ user }) {
                       {isAuthorized && (
                         <button 
                           type="button"
-                          onClick={() => {
-                            const newType = prompt("Enter new Level Type (e.g. Sub-Programme, Key Result Area):");
-                            if (newType && newType.trim()) {
-                              const trimmed = newType.trim();
-                              if (levelTypes.includes(trimmed)) {
-                                addToast({ message: 'Level Type already exists!', type: 'warning' });
-                              } else {
-                                const updated = [...levelTypes, trimmed];
-                                setLevelTypes(updated);
-                                localStorage.setItem('me_level_types', JSON.stringify(updated));
-                                setNewNodeLevelType(trimmed);
-                              }
-                            }
-                          }}
+                          onClick={() => openAddLevelTypeModal('framework')}
                           style={{ border: 'none', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, padding: 0 }}
                         >
                           + Add Custom
@@ -2018,20 +2060,7 @@ export default function AdminScreen({ user }) {
                       {isAuthorized && (
                         <button 
                           type="button"
-                          onClick={() => {
-                            const newType = prompt("Enter new Level Type (e.g. Sub-Component, Activity Group):");
-                            if (newType && newType.trim()) {
-                              const trimmed = newType.trim();
-                              if (prjLevelTypes.includes(trimmed)) {
-                                addToast({ message: 'Level Type already exists!', type: 'warning' });
-                              } else {
-                                const updated = [...prjLevelTypes, trimmed];
-                                setPrjLevelTypes(updated);
-                                localStorage.setItem('me_prj_level_types', JSON.stringify(updated));
-                                setNewPrjNodeLevelType(trimmed);
-                              }
-                            }
-                          }}
+                          onClick={() => openAddLevelTypeModal('project')}
                           style={{ border: 'none', background: 'transparent', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, padding: 0 }}
                         >
                           + Add Custom
