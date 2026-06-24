@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { getTable, logAction, API_BASE } from '../MockData';
+import { useToast } from '../components/ToastProvider';
 import tanzaniaLogo from '../images/Coat_of_arms_of_Tanzania.svg';
 
 export default function LoginScreen({ onLoginSuccess }) {
@@ -63,6 +64,8 @@ export default function LoginScreen({ onLoginSuccess }) {
     }
   };
 
+  const { addToast } = useToast();
+
   return (
     <div className="login-container">
       <div className="login-card">
@@ -110,7 +113,7 @@ export default function LoginScreen({ onLoginSuccess }) {
               <label style={{ fontSize: '0.8rem', color: 'var(--neutral-600)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
                 <input type="checkbox" defaultChecked /> Remember session
               </label>
-              <a href="#forgot" style={{ fontSize: '0.8rem' }} onClick={() => alert('Please contact ICT support desk to reset password')}>Forgot Password?</a>
+              <a href="#forgot" style={{ fontSize: '0.8rem' }} onClick={(e) => { e.preventDefault(); addToast({ message: 'Please contact ICT support desk to reset password', type: 'info' }); }}>Forgot Password?</a>
             </div>
 
             <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>

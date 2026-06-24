@@ -4,6 +4,7 @@ import AuditLogViewer from '../components/AuditLogViewer';
 import SearchableSelect from '../components/SearchableSelect';
 import Modal from '../components/Modal';
 import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 
 export default function AdminScreen({ user }) {
   const [activeTab, setActiveTab] = useState('users');
@@ -115,6 +116,7 @@ export default function AdminScreen({ user }) {
   }, []);
 
   const { addToast } = useToast();
+  const { showConfirm } = useConfirm();
 
   const handleToggleRolePermission = (perm) => {
     setRoleFormPermissions(prev => 
@@ -139,7 +141,7 @@ export default function AdminScreen({ user }) {
   const handleSaveRole = (e) => {
     e.preventDefault();
     if (!roleFormName) {
-      alert('Role Name is required.');
+      addToast({ message: 'Role Name is required.', type: 'warning' });
       return;
     }
 
@@ -160,11 +162,11 @@ export default function AdminScreen({ user }) {
       saveTable('roles', updated);
       setRoles(updated);
       logAction(user.username, 'UPDATE', 'Role Configuration', `Updated default permissions for role ${roleFormName}`);
-      alert('Role configuration updated successfully.');
+      addToast({ message: 'Role configuration updated successfully.', type: 'success' });
       handleCancelEditRole();
     } else {
       if (currentRoles.some(r => r.name.toLowerCase() === roleFormName.toLowerCase())) {
-        alert('A role with this name already exists.');
+        addToast({ message: 'A role with this name already exists.', type: 'warning' });
         return;
       }
 
@@ -178,28 +180,28 @@ export default function AdminScreen({ user }) {
       saveTable('roles', updated);
       setRoles(updated);
       logAction(user.username, 'CREATE', 'Role Configuration', `Defined new system role: ${roleFormName}`);
-      alert('New role defined successfully.');
+      addToast({ message: 'New role defined successfully.', type: 'success' });
       handleCancelEditRole();
     }
   };
 
   const handleDeleteRole = (roleNameToDelete) => {
     if (roleNameToDelete === 'System Administrator') {
-      alert('The System Administrator role is a core configuration and cannot be deleted!');
+      addToast({ message: 'The System Administrator role is a core configuration and cannot be deleted!', type: 'warning' });
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete the role "${roleNameToDelete}"?`)) {
-      return;
-    }
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Role', message: `Are you sure you want to delete the role "${roleNameToDelete}"?` });
+      if (!ok) return;
+      const currentRoles = getTable('roles');
+      const updated = currentRoles.filter(r => r.name.toLowerCase() !== roleNameToDelete.toLowerCase());
 
-    const currentRoles = getTable('roles');
-    const updated = currentRoles.filter(r => r.name.toLowerCase() !== roleNameToDelete.toLowerCase());
-
-    saveTable('roles', updated);
-    setRoles(updated);
-    logAction(user.username, 'DELETE', 'Role Configuration', `Deleted role: ${roleNameToDelete}`);
-    alert('Role configuration deleted successfully.');
+      saveTable('roles', updated);
+      setRoles(updated);
+      logAction(user.username, 'DELETE', 'Role Configuration', `Deleted role: ${roleNameToDelete}`);
+      addToast({ message: 'Role configuration deleted successfully.', type: 'success' });
+    })();
   };
 
   const handleTogglePermission = (perm) => {
@@ -329,36 +331,37 @@ export default function AdminScreen({ user }) {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete user ${usernameToDelete}?`)) {
-      return;
-    }
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete User', message: `Are you sure you want to delete user ${usernameToDelete}?` });
+      if (!ok) return;
 
-    const currentUsers = getTable('users');
-    const updated = currentUsers.filter(u => u.username.toLowerCase() !== usernameToDelete.toLowerCase());
+      const currentUsers = getTable('users');
+      const updated = currentUsers.filter(u => u.username.toLowerCase() !== usernameToDelete.toLowerCase());
 
-    saveTable('users', updated);
-    setUsers(updated.map(u => ({
-      id: u.id,
-      name: u.name,
-      username: u.username,
-      role: u.role,
-      dept: u.dept,
-      permissions: u.permissions
-    })));
-    logAction(user.username, 'DELETE', 'User management', `Deleted user account: ${usernameToDelete}`);
-    addToast({ message: 'User account deleted successfully.', type: 'success' });
+      saveTable('users', updated);
+      setUsers(updated.map(u => ({
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        role: u.role,
+        dept: u.dept,
+        permissions: u.permissions
+      })));
+      logAction(user.username, 'DELETE', 'User management', `Deleted user account: ${usernameToDelete}`);
+      addToast({ message: 'User account deleted successfully.', type: 'success' });
+    })();
   };
 
   const handleCreateFramework = (e) => {
     e.preventDefault();
     if (!newFwId || !newFwName || !newFwStartYear || !newFwEndYear) {
-      alert('Please fill all fields');
+      addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentFws = getTable('frameworks');
     if (currentFws.some(f => f.framework_id.toLowerCase() === newFwId.toLowerCase())) {
-      alert('Framework ID already exists!');
+      addToast({ message: 'Framework ID already exists!', type: 'warning' });
       return;
     }
 
@@ -378,19 +381,19 @@ export default function AdminScreen({ user }) {
     // Reset Form
     setNewFwId('');
     setNewFwName('');
-    alert('Strategic Framework defined successfully in portal registry.');
+    addToast({ message: 'Strategic Framework defined successfully in portal registry.', type: 'success' });
   };
 
   const handleCreateNode = (e) => {
     e.preventDefault();
     if (!newNodeId || !newNodeFwId || !newNodeLevelType || !newNodeName) {
-      alert('Please fill all fields');
+      addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentNodes = getTable('nodes');
     if (currentNodes.some(n => n.node_id.toLowerCase() === newNodeId.toLowerCase())) {
-      alert('Node ID already exists!');
+      addToast({ message: 'Node ID already exists!', type: 'warning' });
       return;
     }
 
@@ -427,19 +430,19 @@ export default function AdminScreen({ user }) {
     setNewNodeName('');
     setNewNodeParentId('');
     setNewNodeIndicatorId('');
-    alert('Framework Node successfully attached to results chain.');
+    addToast({ message: 'Framework Node successfully attached to results chain.', type: 'success' });
   };
 
   const handleCreateProject = (e) => {
     e.preventDefault();
     if (!newPrjId || !newPrjName || !newPrjStartYear || !newPrjEndYear) {
-      alert('Please fill all fields');
+      addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentPrjs = getTable('projects');
     if (currentPrjs.some(p => p.project_id.toLowerCase() === newPrjId.toLowerCase())) {
-      alert('Project ID already exists!');
+      addToast({ message: 'Project ID already exists!', type: 'warning' });
       return;
     }
 
@@ -459,19 +462,19 @@ export default function AdminScreen({ user }) {
     // Reset Form
     setNewPrjId('');
     setNewPrjName('');
-    alert('Project defined successfully in portal registry.');
+    addToast({ message: 'Project defined successfully in portal registry.', type: 'success' });
   };
 
   const handleCreateProjectNode = (e) => {
     e.preventDefault();
     if (!newPrjNodeId || !newPrjNodeProjectId || !newPrjNodeLevelType || !newPrjNodeName) {
-      alert('Please fill all fields');
+      addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentNodes = getTable('project_nodes');
     if (currentNodes.some(n => n.node_id.toLowerCase() === newPrjNodeId.toLowerCase())) {
-      alert('Node ID already exists!');
+      addToast({ message: 'Node ID already exists!', type: 'warning' });
       return;
     }
 
@@ -508,138 +511,153 @@ export default function AdminScreen({ user }) {
     setNewPrjNodeName('');
     setNewPrjNodeParentId('');
     setNewPrjNodeIndicatorId('');
-    alert('Project Node successfully attached to results chain.');
+    addToast({ message: 'Project Node successfully attached to results chain.', type: 'success' });
   };
 
   const handleDeleteFramework = (fwId) => {
     if (!isAuthorized) {
-      alert("Permission Error: You are not authorized to modify settings.");
+      addToast({ message: 'Permission Error: You are not authorized to modify settings.', type: 'warning' });
       return;
     }
-    if (!confirm(`Are you sure you want to delete strategic framework ${fwId}? All associated nodes and targets will be affected.`)) return;
-    
-    const currentFws = getTable('frameworks');
-    const updated = currentFws.filter(f => f.framework_id !== fwId);
-    saveTable('frameworks', updated);
-    setFrameworks(updated);
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Framework', message: `Are you sure you want to delete strategic framework ${fwId}? All associated nodes and targets will be affected.` });
+      if (!ok) return;
 
-    // Also remove associated nodes
-    const currentNodes = getTable('nodes');
-    const nodesToKeep = currentNodes.filter(n => n.framework_id !== fwId);
-    saveTable('nodes', nodesToKeep);
-    setNodes(nodesToKeep);
+      const currentFws = getTable('frameworks');
+      const updated = currentFws.filter(f => f.framework_id !== fwId);
+      saveTable('frameworks', updated);
+      setFrameworks(updated);
 
-    logAction(user.username, 'DELETE', 'Framework', `Deleted strategic framework: ${fwId}`);
-    alert(`Framework ${fwId} and its associated nodes deleted successfully.`);
+      // Also remove associated nodes
+      const currentNodes = getTable('nodes');
+      const nodesToKeep = currentNodes.filter(n => n.framework_id !== fwId);
+      saveTable('nodes', nodesToKeep);
+      setNodes(nodesToKeep);
+
+      logAction(user.username, 'DELETE', 'Framework', `Deleted strategic framework: ${fwId}`);
+      addToast({ message: `Framework ${fwId} and its associated nodes deleted successfully.`, type: 'success' });
+    })();
   };
 
   const handleDeleteNode = (nodeId) => {
     if (!isAuthorized) {
-      alert("Permission Error: You are not authorized to modify settings.");
+      addToast({ message: 'Permission Error: You are not authorized to modify settings.', type: 'warning' });
       return;
     }
     const currentNodes = getTable('nodes');
     const hasChildren = currentNodes.some(n => n.parent_node_id === nodeId);
     if (hasChildren) {
-      alert("Validation Error: Cannot delete a parent node that has children. Please delete all children nodes first.");
+      addToast({ message: 'Validation Error: Cannot delete a parent node that has children. Please delete all children nodes first.', type: 'warning' });
       return;
     }
-    if (!confirm(`Are you sure you want to delete node ${nodeId}?`)) return;
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Node', message: `Are you sure you want to delete node ${nodeId}?` });
+      if (!ok) return;
 
-    const updated = currentNodes.filter(n => n.node_id !== nodeId);
-    saveTable('nodes', updated);
-    setNodes(updated);
+      const updated = currentNodes.filter(n => n.node_id !== nodeId);
+      saveTable('nodes', updated);
+      setNodes(updated);
 
-    // Unlink indicator if any
-    const currentIndicators = getTable('indicators');
-    const updatedInds = currentIndicators.map(ind => {
-      if (ind.associated_node_id === nodeId) {
-        return { ...ind, associated_node_id: null };
-      }
-      return ind;
-    });
-    saveTable('indicators', updatedInds);
-    setIndicators(updatedInds);
+      // Unlink indicator if any
+      const currentIndicators = getTable('indicators');
+      const updatedInds = currentIndicators.map(ind => {
+        if (ind.associated_node_id === nodeId) {
+          return { ...ind, associated_node_id: null };
+        }
+        return ind;
+      });
+      saveTable('indicators', updatedInds);
+      setIndicators(updatedInds);
 
-    logAction(user.username, 'DELETE', 'Framework Node', `Deleted framework node: ${nodeId}`);
-    alert(`Node ${nodeId} deleted successfully.`);
+      logAction(user.username, 'DELETE', 'Framework Node', `Deleted framework node: ${nodeId}`);
+      addToast({ message: `Node ${nodeId} deleted successfully.`, type: 'success' });
+    })();
   };
 
   const handleDeleteProject = (prjId) => {
     if (!isAuthorized) {
-      alert("Permission Error: You are not authorized to modify settings.");
+      addToast({ message: 'Permission Error: You are not authorized to modify settings.', type: 'warning' });
       return;
     }
-    if (!confirm(`Are you sure you want to delete project ${prjId}? All associated nodes will be affected.`)) return;
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Project', message: `Are you sure you want to delete project ${prjId}? All associated nodes will be affected.` });
+      if (!ok) return;
 
-    const currentPrjs = getTable('projects');
-    const updated = currentPrjs.filter(p => p.project_id !== prjId);
-    saveTable('projects', updated);
-    setProjects(updated);
+      const currentPrjs = getTable('projects');
+      const updated = currentPrjs.filter(p => p.project_id !== prjId);
+      saveTable('projects', updated);
+      setProjects(updated);
 
-    // Also remove associated project nodes
-    const currentPrjNodes = getTable('project_nodes');
-    const nodesToKeep = currentPrjNodes.filter(n => n.project_id !== prjId);
-    saveTable('project_nodes', nodesToKeep);
-    setProjectNodes(nodesToKeep);
+      // Also remove associated project nodes
+      const currentPrjNodes = getTable('project_nodes');
+      const nodesToKeep = currentPrjNodes.filter(n => n.project_id !== prjId);
+      saveTable('project_nodes', nodesToKeep);
+      setProjectNodes(nodesToKeep);
 
-    logAction(user.username, 'DELETE', 'Project', `Deleted project: ${prjId}`);
-    alert(`Project ${prjId} and its associated nodes deleted successfully.`);
+      logAction(user.username, 'DELETE', 'Project', `Deleted project: ${prjId}`);
+      addToast({ message: `Project ${prjId} and its associated nodes deleted successfully.`, type: 'success' });
+    })();
   };
 
   const handleDeleteProjectNode = (nodeId) => {
     if (!isAuthorized) {
-      alert("Permission Error: You are not authorized to modify settings.");
+      addToast({ message: 'Permission Error: You are not authorized to modify settings.', type: 'warning' });
       return;
     }
     const currentPrjNodes = getTable('project_nodes');
     const hasChildren = currentPrjNodes.some(n => n.parent_node_id === nodeId);
     if (hasChildren) {
-      alert("Validation Error: Cannot delete a parent node that has children. Please delete all children nodes first.");
+      addToast({ message: 'Validation Error: Cannot delete a parent node that has children. Please delete all children nodes first.', type: 'warning' });
       return;
     }
-    if (!confirm(`Are you sure you want to delete project node ${nodeId}?`)) return;
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Project Node', message: `Are you sure you want to delete project node ${nodeId}?` });
+      if (!ok) return;
 
-    const updated = currentPrjNodes.filter(n => n.node_id !== nodeId);
-    saveTable('project_nodes', updated);
-    setProjectNodes(updated);
+      const updated = currentPrjNodes.filter(n => n.node_id !== nodeId);
+      saveTable('project_nodes', updated);
+      setProjectNodes(updated);
 
-    // Unlink indicator if any
-    const currentIndicators = getTable('indicators');
-    const updatedInds = currentIndicators.map(ind => {
-      if (ind.associated_project_node_id === nodeId) {
-        return { ...ind, associated_project_node_id: null };
-      }
-      return ind;
-    });
-    saveTable('indicators', updatedInds);
-    setIndicators(updatedInds);
+      // Unlink indicator if any
+      const currentIndicators = getTable('indicators');
+      const updatedInds = currentIndicators.map(ind => {
+        if (ind.associated_project_node_id === nodeId) {
+          return { ...ind, associated_project_node_id: null };
+        }
+        return ind;
+      });
+      saveTable('indicators', updatedInds);
+      setIndicators(updatedInds);
 
-    logAction(user.username, 'DELETE', 'Project Node', `Deleted project node: ${nodeId}`);
-    alert(`Project node ${nodeId} deleted successfully.`);
+      logAction(user.username, 'DELETE', 'Project Node', `Deleted project node: ${nodeId}`);
+      addToast({ message: `Project node ${nodeId} deleted successfully.`, type: 'success' });
+    })();
   };
 
   const handleDeleteIndicator = (indId) => {
     if (!isAuthorized) {
-      alert("Permission Error: You are not authorized to modify settings.");
+      addToast({ message: 'Permission Error: You are not authorized to modify settings.', type: 'warning' });
       return;
     }
-    if (!confirm(`Are you sure you want to delete indicator ${indId}? This will remove the indicator from all mappings and dashboards.`)) return;
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Indicator', message: `Are you sure you want to delete indicator ${indId}? This will remove the indicator from all mappings and dashboards.` });
+      if (!ok) return;
 
-    const currentInds = getTable('indicators');
-    const updated = currentInds.filter(i => i.indicator_id !== indId);
-    saveTable('indicators', updated);
-    setIndicators(updated);
+      const currentInds = getTable('indicators');
+      const updated = currentInds.filter(i => i.indicator_id !== indId);
+      saveTable('indicators', updated);
+      setIndicators(updated);
 
-    // Also remove targets/metadata
-    const currentTgts = getTable('targets');
-    saveTable('targets', currentTgts.filter(t => t.indicator_id !== indId));
+      // Also remove targets/metadata
+      const currentTgts = getTable('targets');
+      saveTable('targets', currentTgts.filter(t => t.indicator_id !== indId));
 
-    const currentMeta = getTable('metadata');
-    saveTable('metadata', currentMeta.filter(m => m.indicator_id !== indId));
+      const currentMeta = getTable('metadata');
+      saveTable('metadata', currentMeta.filter(m => m.indicator_id !== indId));
 
-    logAction(user.username, 'DELETE', 'Indicator', `Deleted KPI indicator: ${indId}`);
-    alert(`Indicator ${indId} deleted successfully.`);
+      logAction(user.username, 'DELETE', 'Indicator', `Deleted KPI indicator: ${indId}`);
+      addToast({ message: `Indicator ${indId} deleted successfully.`, type: 'success' });
+    })();
   };
 
   const triggerSync = (systemIndex) => {
@@ -659,7 +677,7 @@ export default function AdminScreen({ user }) {
       };
       setIntegrations(finished);
       logAction(user.username, 'SYNC', 'System Integration', `Triggered manual data synchronization with ${finished[systemIndex].system}`);
-      alert(`${finished[systemIndex].system} synchronized successfully!`);
+      addToast({ message: `${finished[systemIndex].system} synchronized successfully!`, type: 'success' });
     }, 1500);
   };
 
@@ -1314,7 +1332,7 @@ export default function AdminScreen({ user }) {
             <button 
               className="btn btn-primary" 
               style={{ padding: '6px 12px', fontSize: '0.8rem', opacity: isAuthorized ? 1 : 0.5, cursor: isAuthorized ? 'pointer' : 'not-allowed' }} 
-              onClick={() => isAuthorized ? alert('Configure new indicators under ESDP III') : null}
+              onClick={() => isAuthorized ? addToast({ message: 'Configure new indicators under ESDP III', type: 'info' }) : null}
               disabled={!isAuthorized}
             >
               + Add Indicator
@@ -1349,7 +1367,7 @@ export default function AdminScreen({ user }) {
                         <button 
                           className="btn btn-secondary" 
                           style={{ padding: '4px 8px', fontSize: '0.75rem', opacity: isAuthorized ? 1 : 0.5, cursor: isAuthorized ? 'pointer' : 'not-allowed' }} 
-                          onClick={() => isAuthorized ? alert('Modifying indicator rules') : null}
+                          onClick={() => isAuthorized ? addToast({ message: 'Modifying indicator rules', type: 'info' }) : null}
                           disabled={!isAuthorized}
                         >
                           Configure
@@ -1669,7 +1687,7 @@ export default function AdminScreen({ user }) {
                             if (newType && newType.trim()) {
                               const trimmed = newType.trim();
                               if (levelTypes.includes(trimmed)) {
-                                alert("Level Type already exists!");
+                                addToast({ message: 'Level Type already exists!', type: 'warning' });
                               } else {
                                 const updated = [...levelTypes, trimmed];
                                 setLevelTypes(updated);
@@ -2005,7 +2023,7 @@ export default function AdminScreen({ user }) {
                             if (newType && newType.trim()) {
                               const trimmed = newType.trim();
                               if (prjLevelTypes.includes(trimmed)) {
-                                alert("Level Type already exists!");
+                                addToast({ message: 'Level Type already exists!', type: 'warning' });
                               } else {
                                 const updated = [...prjLevelTypes, trimmed];
                                 setPrjLevelTypes(updated);

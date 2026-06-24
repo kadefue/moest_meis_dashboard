@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTable, saveTable, getIndicatorPerformance, logAction } from '../MockData';
+import { useToast } from '../components/ToastProvider';
 import IndicatorChart from '../components/IndicatorChart';
 import SearchableSelect from '../components/SearchableSelect';
 
@@ -34,12 +35,14 @@ export default function IndicatorScreen({ initialIndicatorId, user }) {
     }
   }, [selectedIndicatorId, selectedPeriod]);
 
+  const { addToast } = useToast();
+
   const handleSaveCommentary = () => {
     const key = `me_notes_${selectedIndicatorId}_${selectedPeriod}`;
     localStorage.setItem(key, commentary);
     setSavedCommentary(commentary);
     logAction(user.username, 'UPDATE', 'Commentary', `Added narrative commentary to ${selectedIndicatorId} for period ${selectedPeriod}`);
-    alert('Narrative commentary saved successfully!');
+    addToast({ message: 'Narrative commentary saved successfully!', type: 'success' });
   };
 
   // Filter indicator list by domain

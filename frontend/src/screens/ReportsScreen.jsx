@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getTable, getIndicatorPerformance } from '../MockData';
+import { useToast } from '../components/ToastProvider';
 import SearchableSelect from '../components/SearchableSelect';
 
 export default function ReportsScreen({ user }) {
@@ -16,6 +17,7 @@ export default function ReportsScreen({ user }) {
   const [projectNodes, setProjectNodes] = useState([]);
   const [indicators, setIndicators] = useState([]);
   const [previewData, setPreviewData] = useState([]);
+  const { addToast } = useToast();
   
   useEffect(() => {
     setFrameworks(getTable('frameworks'));
@@ -93,8 +95,8 @@ export default function ReportsScreen({ user }) {
       link.click();
       document.body.removeChild(link);
     } else {
-      // PDF or DOCX mock exports
-      alert(`Report compilation started.\nFormat: ${format.toUpperCase()}\nGenerating layout for: ${user.name} (${user.role})...\nYour browser will receive the file in a moment.`);
+      addToast({ message: `Report compilation started. Format: ${format.toUpperCase()}`, type: 'info' });
+      // PDF or DOCX mock exports - simulate with toast
     }
   };
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getTable, saveTable, logAction } from '../MockData';
+import { useToast } from '../components/ToastProvider';
+import { useConfirm } from '../components/ConfirmProvider';
 import SearchableSelect from '../components/SearchableSelect';
 
 export default function DataEntryScreen({ user }) {
@@ -93,14 +95,18 @@ export default function DataEntryScreen({ user }) {
     };
   }, [user]);
 
-  const handleDeleteSubmission = (dataId) => {
+  const { addToast } = useToast();
+  const { showConfirm } = useConfirm();
+
+  const handleDeleteSubmission = async (dataId) => {
     const entry = getTable('actual_data').find(d => d.data_id === dataId);
     if (!entry) return;
     if (entry.submitted_by !== user?.username) {
-      alert("Permission Error: You can only delete entries you submitted.");
+      addToast({ message: 'Permission Error: You can only delete entries you submitted.', type: 'warning' });
       return;
     }
-    if (!confirm("Are you sure you want to delete this submission? This action will be logged in the audit trails.")) return;
+    const ok = await showConfirm({ title: 'Delete submission', message: 'Are you sure you want to delete this submission? This action will be logged in the audit trails.' });
+    if (!ok) return;
 
     const actuals = getTable('actual_data');
     const updatedActuals = actuals.filter(d => d.data_id !== dataId);
@@ -114,24 +120,24 @@ export default function DataEntryScreen({ user }) {
     );
     
     loadSubmissions();
-    alert("Data entry deleted successfully.");
+    addToast({ message: 'Data entry deleted successfully.', type: 'success' });
   };
 
   const handleSaveEdit = () => {
     if (!editValue || isNaN(editValue)) {
-      alert('Please enter a valid numeric value');
+      addToast({ message: 'Please enter a valid numeric value', type: 'warning' });
       return;
     }
     const val = Number(editValue);
     const indId = editingSubmission.indicator_id;
     if (indId === 'IND-001' || indId === 'IND-003' || indId === 'IND-004') {
       if (val < 0 || val > 100) {
-        alert('Percentage values must be between 0 and 100');
+        addToast({ message: 'Percentage values must be between 0 and 100', type: 'warning' });
         return;
       }
     } else if (indId === 'IND-002') {
       if (val < 5 || val > 150) {
-        alert('Teacher ratio should realistically be between 5 and 150');
+        addToast({ message: 'Teacher ratio should realistically be between 5 and 150', type: 'warning' });
         return;
       }
     }
@@ -164,7 +170,7 @@ export default function DataEntryScreen({ user }) {
 
     setEditingSubmission(null);
     loadSubmissions();
-    alert('Submission updated successfully. Status reset to Submitted for verification.');
+    addToast({ message: 'Submission updated successfully. Status reset to Submitted for verification.', type: 'success' });
   };
 
   const triggerAutoSave = () => {
@@ -217,7 +223,7 @@ export default function DataEntryScreen({ user }) {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size exceeds maximum 5MB limit.');
+          addToast({ message: 'File size exceeds maximum 5MB limit.', type: 'warning' });
         return;
       }
       setFileName(file.name);
@@ -231,7 +237,7 @@ export default function DataEntryScreen({ user }) {
     const allInds = getTable('indicators');
     const targetInd = allInds.find(i => i.indicator_id === indicatorId);
     if (targetInd && targetInd.is_derived) {
-      alert('Validation Error: Submissions for derived indicators are restricted.');
+      addToast({ message: 'Validation Error: Submissions for derived indicators are restricted.', type: 'warning' });
       return;
     }
 
