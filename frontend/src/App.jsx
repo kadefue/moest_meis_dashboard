@@ -53,11 +53,6 @@ export default function App() {
     setCurrentView('indicators');
   };
 
-  // If user is not authenticated, render Login Page
-  if (!currentUser) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
-  }
-
   // Render main screen component based on active navigation item
   const renderActiveScreen = () => {
     switch (currentView) {
@@ -89,32 +84,37 @@ export default function App() {
   return (
     <ToastProvider>
       <ConfirmProvider>
-        <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-      {/* Navigation Sidebar */}
-      <Sidebar 
-        currentView={currentView} 
-        setCurrentView={setCurrentView} 
-        collapsed={sidebarCollapsed} 
-        setCollapsed={setSidebarCollapsed}
-        user={currentUser}
-        onLogout={handleLogout}
-      />
+        {!currentUser ? (
+          <LoginScreen onLoginSuccess={handleLoginSuccess} />
+        ) : (
+          <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+            {/* Navigation Sidebar */}
+            <Sidebar 
+              currentView={currentView} 
+              setCurrentView={setCurrentView} 
+              collapsed={sidebarCollapsed} 
+              setCollapsed={setSidebarCollapsed}
+              user={currentUser}
+              onLogout={handleLogout}
+            />
 
-      {/* Main Content Area Wrapper */}
-      <div className="main-wrapper">
-        <Navbar 
-          currentView={currentView}
-          collapsed={sidebarCollapsed}
-          setCollapsed={setSidebarCollapsed}
-          user={currentUser}
-          setUser={setCurrentUser}
-          allUsers={allUsers}
-        />
-        
-        <main className="content-area">
-          {renderActiveScreen()}
-        </main>
-        </div>
+            {/* Main Content Area Wrapper */}
+            <div className="main-wrapper">
+              <Navbar 
+                currentView={currentView}
+                collapsed={sidebarCollapsed}
+                setCollapsed={setSidebarCollapsed}
+                user={currentUser}
+                setUser={setCurrentUser}
+                allUsers={allUsers}
+              />
+              
+              <main className="content-area">
+                {renderActiveScreen()}
+              </main>
+            </div>
+          </div>
+        )}
       </ConfirmProvider>
     </ToastProvider>
   );

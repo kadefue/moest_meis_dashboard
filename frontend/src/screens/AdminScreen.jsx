@@ -41,6 +41,15 @@ export default function AdminScreen({ user }) {
   const [roleFormPermissions, setRoleFormPermissions] = useState(['view_dashboard']);
   const [showUserModal, setShowUserModal] = useState(false);
   
+  // Indicator Form State
+  const [showIndicatorModal, setShowIndicatorModal] = useState(false);
+  const [isEditingIndicator, setIsEditingIndicator] = useState(false);
+  const [indFormId, setIndFormId] = useState('');
+  const [indFormName, setIndFormName] = useState('');
+  const [indFormType, setIndFormType] = useState('Output');
+  const [indFormIsDerived, setIndFormIsDerived] = useState(false);
+  const [indFormFormula, setIndFormFormula] = useState('');
+  
   // Framework Form State
   const [newFwId, setNewFwId] = useState('');
   const [newFwName, setNewFwName] = useState('');
@@ -699,6 +708,79 @@ export default function AdminScreen({ user }) {
       logAction(user.username, 'DELETE', 'Indicator', `Deleted KPI indicator: ${indId}`);
       addToast({ message: `Indicator ${indId} deleted successfully.`, type: 'success' });
     })();
+  };
+
+  const handleSelectIndicatorForEdit = (ind) => {
+    setIsEditingIndicator(true);
+    setIndFormId(ind.indicator_id);
+    setIndFormName(ind.name);
+    setIndFormType(ind.type);
+    setIndFormIsDerived(!!ind.is_derived);
+    setIndFormFormula(ind.formula || '');
+    setShowIndicatorModal(true);
+  };
+
+  const handleAddIndicatorClick = () => {
+    setIsEditingIndicator(false);
+    setIndFormId(`IND-${String(indicators.length + 1).padStart(3, '0')}`);
+    setIndFormName('');
+    setIndFormType('Output');
+    setIndFormIsDerived(false);
+    setIndFormFormula('');
+    setShowIndicatorModal(true);
+  };
+
+  const handleSaveIndicator = (e) => {
+    e.preventDefault();
+    if (!indFormId || !indFormName) {
+      addToast({ message: 'ID and Name are required', type: 'warning' });
+      return;
+    }
+    if (indFormIsDerived && !indFormFormula) {
+      addToast({ message: 'Formula is required for Secondary KPIs', type: 'warning' });
+      return;
+    }
+    
+    const currentInds = getTable('indicators');
+    if (isEditingIndicator) {
+      const updated = currentInds.map(i => {
+        if (i.indicator_id === indFormId) {
+          return {
+            ...i,
+            name: indFormName,
+            type: indFormType,
+            is_derived: indFormIsDerived,
+            formula: indFormIsDerived ? indFormFormula : null
+          };
+        }
+        return i;
+      });
+      saveTable('indicators', updated);
+      setIndicators(updated);
+      logAction(user.username, 'UPDATE', 'Indicator', `Updated indicator ${indFormId}`);
+      addToast({ message: 'Indicator updated successfully', type: 'success' });
+    } else {
+      if (currentInds.some(i => i.indicator_id === indFormId)) {
+        addToast({ message: 'Indicator ID already exists!', type: 'warning' });
+        return;
+      }
+      const newInd = {
+        indicator_id: indFormId,
+        name: indFormName,
+        type: indFormType,
+        is_derived: indFormIsDerived,
+        formula: indFormIsDerived ? indFormFormula : null,
+        associated_node_id: null,
+        associated_project_node_id: null,
+        associated_activity_id: null
+      };
+      const updated = [...currentInds, newInd];
+      saveTable('indicators', updated);
+      setIndicators(updated);
+      logAction(user.username, 'CREATE', 'Indicator', `Created new indicator ${indFormId}`);
+      addToast({ message: 'Indicator created successfully', type: 'success' });
+    }
+    setShowIndicatorModal(false);
   };
 
   const triggerSync = (systemIndex) => {
@@ -1387,7 +1469,7 @@ export default function AdminScreen({ user }) {
             <button 
               className="btn btn-primary" 
               style={{ padding: '6px 12px', fontSize: '0.8rem', opacity: isAuthorized ? 1 : 0.5, cursor: isAuthorized ? 'pointer' : 'not-allowed' }} 
-              onClick={() => isAuthorized ? addToast({ message: 'Configure new indicators under ESDP III', type: 'info' }) : null}
+              onClick={() => isAuthorized ? handleAddIndicatorClick() : null}
               disabled={!isAuthorized}
             >
               + Add Indicator
@@ -1422,7 +1504,7 @@ export default function AdminScreen({ user }) {
                         <button 
                           className="btn btn-secondary" 
                           style={{ padding: '4px 8px', fontSize: '0.75rem', opacity: isAuthorized ? 1 : 0.5, cursor: isAuthorized ? 'pointer' : 'not-allowed' }} 
-                          onClick={() => isAuthorized ? addToast({ message: 'Modifying indicator rules', type: 'info' }) : null}
+                          onClick={() => isAuthorized ? handleSelectIndicatorForEdit(ind) : null}
                           disabled={!isAuthorized}
                         >
                           Configure
@@ -1443,6 +1525,77 @@ export default function AdminScreen({ user }) {
               </tbody>
             </table>
           </div>
+          {showIndicatorModal && (
+            <Modal title={isEditingIndicator ? 'Edit KPI Indicator' : 'Register New KPI'} onClose={() => setShowIndicatorModal(false)} footer={null}>
+              <form onSubmit={handleSaveIndicator} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Indicator ID</label>
+                  <input type="text" className="form-control" value={indFormId} onChange={e => setIndFormId(e.target.value)} required disabled={isEditingIndicator} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Indicator Name</label>
+                  <input type="text" className="form-control" value={indFormName} onChange={e => setIndFormName(e.target.value)} required />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>KPI Type</label>
+                  <select className="form-control" value={indFormType} onChange={e => setIndFormType(e.target.value)}>
+                    <option value="Input">Input</option>
+                    <option value="Output">Output</option>
+                    <option value="Outcome">Outcome</option>
+                    <option value="Impact">Impact</option>
+                  </select>
+                </div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                  <input type="checkbox" id="isDerivedToggle" checked={indFormIsDerived} onChange={e => {
+                    setIndFormIsDerived(e.target.checked);
+                    if (!e.target.checked) setIndFormFormula('');
+                  }} />
+                  <label htmlFor="isDerivedToggle" style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>Is Secondary KPI (Calculated from Formula)?</label>
+                </div>
+
+                {indFormIsDerived && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--neutral-100)', borderRadius: 'var(--radius-sm)' }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Formula Builder</label>
+                    <p style={{ fontSize: '0.75rem', margin: 0, color: 'var(--neutral-600)' }}>Use standard math operators (+, -, *, /, ()). Select primary KPIs below to insert their IDs into the formula.</p>
+                    
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <select 
+                        className="form-control" 
+                        style={{ flex: 1, fontSize: '0.8rem' }}
+                        onChange={e => {
+                          if(e.target.value) {
+                            setIndFormFormula(prev => prev + e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                      >
+                        <option value="">-- Insert Primary KPI --</option>
+                        {indicators.filter(i => !i.is_derived).map(i => (
+                          <option key={i.indicator_id} value={i.indicator_id}>{i.indicator_id} - {i.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <textarea 
+                      className="form-control" 
+                      rows="3" 
+                      placeholder="e.g., (IND-001 / IND-002) * 100" 
+                      value={indFormFormula}
+                      onChange={e => setIndFormFormula(e.target.value)}
+                      required={indFormIsDerived}
+                      style={{ fontFamily: 'monospace' }}
+                    ></textarea>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{isEditingIndicator ? 'Update KPI' : 'Save KPI'}</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowIndicatorModal(false)}>Cancel</button>
+                </div>
+              </form>
+            </Modal>
+          )}
         </div>
       )}
 

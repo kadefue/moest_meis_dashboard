@@ -55,6 +55,73 @@ class DashboardController extends Controller
             return response()->json(['error' => 'Indicator not found'], 404);
         }
 
+        // Derived KPI Handling
+        if ($indicator->is_derived && !empty($indicator->formula)) {
+            $formula = $indicator->formula;
+            preg_match_all('/IND-\d{3}/', $formula, $matches);
+            $baseIndicators = $matches[0] ?? [];
+            
+            foreach ($baseIndicators as $baseInd) {
+                $baseAvg = ActualData::where('indicator_id', $baseInd)
+                    ->where('period', 'like', substr($period, 0, 7) . '%')
+                    ->where('source_category', 'Official_Gov')
+                    ->avg('actual_value') ?? 0;
+                $formula = str_replace($baseInd, $baseAvg, $formula);
+            }
+            
+            $computedActual = 0;
+            // Mathematically safe eval
+            if (preg_match('/^[0-9+\-*\/().\s]+$/', $formula)) {
+                try {
+                    $computedActual = eval("return $formula;");
+                } catch (\Throwable $e) {
+                    $computedActual = 0;
+                }
+            }
+
+            $targets = Target::where('indicator_id', $indicatorId)
+                ->where('financial_year', $period)
+                ->get();
+            $avgTarget = $targets->avg('target_value') ?? 0;
+            $avgBaseline = $targets->avg('baseline_value') ?? 0;
+            $isLowerBetter = ($indicatorId === 'IND-002');
+
+            $attainment = 0;
+            if ($isLowerBetter) {
+                $attainment = $computedActual <= $avgTarget ? 100 : max(0, 100 - (($computedActual - $avgTarget) / ($avgTarget ?: 1) * 100));
+            } else {
+                $attainment = $avgTarget > 0 ? ($computedActual / $avgTarget * 100) : 0;
+            }
+
+            $status = 'On Track';
+            if ($isLowerBetter) {
+                if ($computedActual <= $avgTarget) $status = 'On Track';
+                elseif ($computedActual <= $avgTarget * 1.1) $status = 'At Risk';
+                else $status = 'Below Target';
+            } else {
+                if ($attainment >= 100) $status = 'On Track';
+                elseif ($attainment >= 90) $status = 'At Risk';
+                else $status = 'Below Target';
+            }
+
+            return response()->json([
+                'data' => [
+                    'indicator_id' => $indicatorId,
+                    'name' => $indicator->name,
+                    'type' => $indicator->type,
+                    'national_actual' => round($computedActual, 2),
+                    'national_target' => round($avgTarget, 2),
+                    'baseline_value' => round($avgBaseline, 2),
+                    'attainment_percentage' => round($attainment, 1),
+                    'status' => $status,
+                    'regional_entries' => [],
+                    'stakeholder_actual' => 0,
+                    'stakeholder_entries' => []
+                ]
+            ]);
+        }
+
+        // Standard KPI Handling
         // Get actual values for period (Official Government Track only)
         $actuals = ActualData::where('indicator_id', $indicatorId)
             ->where('period', 'like', substr($period, 0, 7) . '%')

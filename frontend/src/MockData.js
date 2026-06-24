@@ -431,8 +431,72 @@ export function logAction(username, action, entity, details) {
 }
 
 export function getIndicatorPerformance(indicatorId, period = '2024/25') {
-  // CRITICAL IMPROVEMENT: Filter actuals to ONLY include Official Government Track
   const allActuals = getTable('actual_data');
+  const ind = getTable('indicators').find(i => i.indicator_id === indicatorId);
+  const targets = getTable('targets').filter(t => t.indicator_id === indicatorId && t.financial_year === period);
+  const targetVal = targets.length > 0 ? (targets.reduce((acc, curr) => acc + Number(curr.target_value), 0) / targets.length) : 0;
+  const baselineVal = targets.length > 0 ? (targets.reduce((acc, curr) => acc + Number(curr.baseline_value), 0) / targets.length) : 0;
+  const isLowerBetter = indicatorId === 'IND-002';
+
+  if (ind && ind.is_derived && ind.formula) {
+    const baseIndicators = ind.formula.match(/IND-\d{3}/g) || [];
+    let evaluatedFormula = ind.formula;
+    
+    for (const baseInd of baseIndicators) {
+      const baseActuals = allActuals.filter(d => 
+        d.indicator_id === baseInd && 
+        d.period.startsWith(period.substring(0, 7)) &&
+        d.source_category === 'Official_Gov'
+      );
+      const sumBase = baseActuals.reduce((acc, curr) => acc + Number(curr.actual_value), 0);
+      const avgBase = baseActuals.length > 0 ? sumBase / baseActuals.length : 0;
+      // Replace globally in the formula
+      evaluatedFormula = evaluatedFormula.replace(new RegExp(baseInd, 'g'), avgBase);
+    }
+    
+    let computedActual = 0;
+    try {
+      if (/^[0-9+\-*/().\s]+$/.test(evaluatedFormula)) {
+        computedActual = new Function('return ' + evaluatedFormula)();
+      }
+    } catch(e) {
+      console.error("Formula eval failed", e);
+    }
+
+    let attainmentPct = 0;
+    if (isLowerBetter) {
+      attainmentPct = computedActual <= targetVal ? 100 : Math.max(0, 100 - ((computedActual - targetVal) / targetVal * 100));
+    } else {
+      attainmentPct = targetVal > 0 ? (computedActual / targetVal * 100) : 0;
+    }
+
+    let status = 'On Track';
+    if (isLowerBetter) {
+      if (computedActual <= targetVal) status = 'On Track';
+      else if (computedActual <= targetVal * 1.1) status = 'At Risk';
+      else status = 'Below Target';
+    } else {
+      if (attainmentPct >= 100) status = 'On Track';
+      else if (attainmentPct >= 90) status = 'At Risk';
+      else status = 'Below Target';
+    }
+
+    return {
+      indicator_id: indicatorId,
+      name: ind.name,
+      type: ind.type,
+      national_actual: Number(computedActual.toFixed(2)),
+      national_target: Number(targetVal.toFixed(2)),
+      baseline_value: Number(baselineVal.toFixed(2)),
+      attainment_percentage: Number(attainmentPct.toFixed(1)),
+      status,
+      regional_entries: [], // Derived KPIs have a national aggregate only by default unless specified
+      stakeholder_actual: 0,
+      stakeholder_entries: []
+    };
+  }
+
+  // CRITICAL IMPROVEMENT: Filter actuals to ONLY include Official Government Track
   const actuals = allActuals.filter(d => 
     d.indicator_id === indicatorId && 
     d.period.startsWith(period.substring(0, 7)) &&
@@ -445,9 +509,6 @@ export function getIndicatorPerformance(indicatorId, period = '2024/25') {
     d.period.startsWith(period.substring(0, 7)) &&
     d.source_category === 'Stakeholder_Contribution'
   );
-
-  const targets = getTable('targets').filter(t => t.indicator_id === indicatorId && t.financial_year === period);
-  const ind = getTable('indicators').find(i => i.indicator_id === indicatorId);
 
   const sumStakeholder = stakeholderActuals.reduce((acc, curr) => acc + Number(curr.actual_value), 0);
 
@@ -466,13 +527,8 @@ export function getIndicatorPerformance(indicatorId, period = '2024/25') {
     };
   }
 
-  const isLowerBetter = indicatorId === 'IND-002';
-
   const sumActual = actuals.reduce((acc, curr) => acc + Number(curr.actual_value), 0);
   const avgActual = sumActual / actuals.length;
-
-  const targetVal = targets.length > 0 ? (targets.reduce((acc, curr) => acc + Number(curr.target_value), 0) / targets.length) : 0;
-  const baselineVal = targets.length > 0 ? (targets.reduce((acc, curr) => acc + Number(curr.baseline_value), 0) / targets.length) : 0;
 
   let attainmentPct = 0;
   if (isLowerBetter) {

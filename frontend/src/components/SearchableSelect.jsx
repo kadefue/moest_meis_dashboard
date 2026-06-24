@@ -51,6 +51,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       style={{ 
         position: 'relative', 
         width: '100%', 
+        zIndex: isOpen ? 1010 : 1,
         ...style 
       }}
     >
@@ -96,7 +97,9 @@ export default function SearchableSelect({ options, value, onChange, placeholder
             position: 'absolute',
             top: 'calc(100% + 6px)',
             left: 0,
-            width: '100%',
+            minWidth: '100%',
+            width: 'max-content',
+            maxWidth: '450px',
             background: 'var(--white)',
             border: '1px solid var(--neutral-200)',
             borderRadius: 'var(--radius-sm)',
