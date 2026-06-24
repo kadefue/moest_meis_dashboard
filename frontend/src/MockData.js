@@ -1,7 +1,7 @@
 // Mock Data Store simulating PostgreSQL tables in localStorage for the MoEST M&E Dashboard
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8181/api';
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8181/api';
 
 const INITIAL_FRAMEWORKS = [
   { framework_id: 'FW-001', name: 'Education Sector Development Plan (ESDP III)', start_year: 2024, end_year: 2029 },
@@ -12,6 +12,15 @@ const INITIAL_FRAMEWORKS = [
 const INITIAL_PROJECTS = [
   { project_id: 'PRJ-001', name: 'Higher Education Economic Transformation (HEET)', start_year: 2021, end_year: 2026 },
   { project_id: 'PRJ-002', name: 'Secondary Education Quality Improvement Project (SEQUIP)', start_year: 2020, end_year: 2025 }
+];
+
+const INITIAL_ROLES = [
+  { name: 'System Administrator', description: 'Full access to M&E dashboard, settings, and user scopes.', default_permissions: ['view_dashboard', 'submit_data', 'verify_data', 'approve_data', 'manage_settings'] },
+  { name: 'MoEST Leadership', description: 'Read-only dashboard view and approval rights.', default_permissions: ['view_dashboard', 'approve_data'] },
+  { name: 'National M&E Officer', description: 'Manages indicators, frameworks, and verifies submissions.', default_permissions: ['view_dashboard', 'submit_data', 'verify_data', 'manage_settings'] },
+  { name: 'Regional M&E Officer', description: 'Regional submission and verification privileges.', default_permissions: ['view_dashboard', 'submit_data', 'verify_data'] },
+  { name: 'District Education Officer', description: 'Submits district performance indicators.', default_permissions: ['view_dashboard', 'submit_data'] },
+  { name: 'School Data Entry Officer', description: 'Submits school-level raw datasets.', default_permissions: ['view_dashboard', 'submit_data'] }
 ];
 
 const INITIAL_PROJECT_NODES = [
@@ -149,7 +158,8 @@ export function initializeStorage() {
     targets: INITIAL_TARGETS,
     actual_data: INITIAL_ACTUAL_DATA,
     audit_logs: INITIAL_AUDIT_LOGS,
-    users: USERS
+    users: USERS,
+    roles: INITIAL_ROLES
   };
 
   Object.entries(tables).forEach(([key, val]) => {
@@ -242,6 +252,22 @@ export async function preloadFromBackend() {
     // Fetch audit logs
     const logsRes = await axios.get(`${API_BASE}/audit-logs`, { headers });
     localStorage.setItem('me_audit_logs', JSON.stringify(logsRes.data.data));
+
+    // Fetch users
+    try {
+      const usersRes = await axios.get(`${API_BASE}/users`, { headers });
+      localStorage.setItem('me_users', JSON.stringify(usersRes.data.data));
+    } catch (e) {
+      console.warn('Failed to preload users from backend', e);
+    }
+
+    // Fetch roles
+    try {
+      const rolesRes = await axios.get(`${API_BASE}/roles`, { headers });
+      localStorage.setItem('me_roles', JSON.stringify(rolesRes.data.data));
+    } catch (e) {
+      console.warn('Failed to preload roles from backend', e);
+    }
     
     console.log('Successfully preloaded all data tables from Laravel SQLite backend.');
     return true;
@@ -263,6 +289,8 @@ async function syncToBackend(name, oldData, newData) {
       if (tableName === 'actual_data') return item.data_id;
       if (tableName === 'activities') return item.activity_id;
       if (tableName === 'mappings') return item.mapping_id;
+      if (tableName === 'users') return item.username;
+      if (tableName === 'roles') return item.name;
       return item.id;
     };
 
@@ -292,6 +320,17 @@ async function syncToBackend(name, oldData, newData) {
           submitted_by: added.submitted_by,
           source_category: added.source_category
         }, { headers });
+      } else if (name === 'users') {
+        await axios.post(`${API_BASE}/register`, {
+          name: added.name,
+          email: added.username,
+          password: added.password || 'password123',
+          role: added.role,
+          dept: added.dept,
+          permissions: added.permissions
+        }, { headers });
+      } else if (name === 'roles') {
+        await axios.post(`${API_BASE}/roles`, added, { headers });
       }
     }
     // Case 2: Item deleted
@@ -312,6 +351,10 @@ async function syncToBackend(name, oldData, newData) {
         await axios.delete(`${API_BASE}/indicators/${id}`, { headers });
       } else if (name === 'actual_data') {
         await axios.delete(`${API_BASE}/submissions/${id}`, { headers });
+      } else if (name === 'users') {
+        await axios.delete(`${API_BASE}/users/${id}`, { headers });
+      } else if (name === 'roles') {
+        await axios.delete(`${API_BASE}/roles/${id}`, { headers });
       }
     }
     // Case 3: Item updated
@@ -346,6 +389,19 @@ async function syncToBackend(name, oldData, newData) {
         } else {
           await axios.put(`${API_BASE}/submissions/${id}`, updated, { headers });
         }
+      } else if (name === 'users') {
+        await axios.put(`${API_BASE}/users/${id}`, {
+          name: updated.name,
+          role: updated.role,
+          dept: updated.dept,
+          permissions: updated.permissions,
+          password: updated.password || undefined
+        }, { headers });
+      } else if (name === 'roles') {
+        await axios.put(`${API_BASE}/roles/${id}`, {
+          description: updated.description,
+          default_permissions: updated.default_permissions
+        }, { headers });
       }
     }
   } catch (err) {

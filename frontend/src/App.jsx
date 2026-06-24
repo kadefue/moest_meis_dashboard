@@ -12,6 +12,7 @@ import AdminScreen from './screens/AdminScreen';
 // Core layout components
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
+import { ToastProvider } from './components/ToastProvider';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -85,7 +86,8 @@ export default function App() {
   };
 
   return (
-    <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <ToastProvider>
+      <div className={`app-container ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       {/* Navigation Sidebar */}
       <Sidebar 
         currentView={currentView} 
@@ -111,6 +113,6 @@ export default function App() {
           {renderActiveScreen()}
         </main>
       </div>
-    </div>
+    </ToastProvider>
   );
 }

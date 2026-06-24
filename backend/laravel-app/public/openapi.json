@@ -3,7 +3,7 @@
   "info": {
     "title": "MoEST Monitoring & Evaluation API Portal",
     "version": "1.0.0",
-    "description": "Unified Multi-Framework Results-Based Management (RBM) API engine for MoEST. Coordinates indicators, targets, and actual education progress data streams.",
+    "description": "Unified Multi-Framework Results-Based Management (RBM) API engine for MoEST. Coordinates indicators, targets, strategic projects, and actual education progress data streams.",
     "contact": {
       "name": "MoEST ICT Support",
       "email": "ict.support@moe.go.tz"
@@ -11,13 +11,38 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:8000",
+      "url": "http://127.0.0.1:8181",
       "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "UserUsernameHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-User-Username",
+        "description": "Authenticated user's email/username (e.g. admin@moe.go.tz)"
+      },
+      "UserRoleHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-User-Role",
+        "description": "Authenticated user's role (e.g. System Administrator)"
+      }
+    }
+  },
+  "security": [
+    {
+      "UserUsernameHeader": [],
+      "UserRoleHeader": []
     }
   ],
   "paths": {
     "/api/summary": {
       "get": {
+        "tags": [
+          "Analytics & Reports"
+        ],
         "summary": "Get system-wide summary metrics",
         "description": "Returns counts for total activities, indicators tracked, and pending data entries.",
         "responses": {
@@ -31,9 +56,18 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "activities_total": { "type": "integer", "example": 1245 },
-                        "indicators_tracked": { "type": "integer", "example": 342 },
-                        "reports_pending": { "type": "integer", "example": 12 }
+                        "activities_total": {
+                          "type": "integer",
+                          "example": 1245
+                        },
+                        "indicators_tracked": {
+                          "type": "integer",
+                          "example": 342
+                        },
+                        "reports_pending": {
+                          "type": "integer",
+                          "example": 12
+                        }
                       }
                     }
                   }
@@ -46,6 +80,9 @@
     },
     "/api/performance": {
       "get": {
+        "tags": [
+          "Analytics & Reports"
+        ],
         "summary": "Get indicator performance aggregated",
         "description": "Calculates target met percentage and splits entries by region for a given KPI.",
         "parameters": [
@@ -53,14 +90,20 @@
             "name": "indicator_id",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "default": "IND-001" },
-            "description": "Indicator Code (e.g. IND-001, IND-002)"
+            "schema": {
+              "type": "string",
+              "default": "IND-001"
+            },
+            "description": "Indicator Code (e.g. IND-001)"
           },
           {
             "name": "period",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "default": "2024/25" },
+            "schema": {
+              "type": "string",
+              "default": "2024/25"
+            },
             "description": "Financial Period (e.g. 2024/25)"
           }
         ],
@@ -75,26 +118,71 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "indicator_id": { "type": "string", "example": "IND-001" },
-                        "name": { "type": "string", "example": "Net Enrollment Rate (NER) - Primary" },
-                        "type": { "type": "string", "example": "Outcome" },
-                        "national_actual": { "type": "number", "example": 95.8 },
-                        "national_target": { "type": "number", "example": 96.5 },
-                        "baseline_value": { "type": "number", "example": 94.2 },
-                        "attainment_percentage": { "type": "number", "example": 99.3 },
-                        "status": { "type": "string", "example": "On Track" },
+                        "indicator_id": {
+                          "type": "string",
+                          "example": "IND-001"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Net Enrollment Rate (NER) - Primary"
+                        },
+                        "type": {
+                          "type": "string",
+                          "example": "Outcome"
+                        },
+                        "national_actual": {
+                          "type": "number",
+                          "example": 95.8
+                        },
+                        "national_target": {
+                          "type": "number",
+                          "example": 96.5
+                        },
+                        "baseline_value": {
+                          "type": "number",
+                          "example": 94.2
+                        },
+                        "attainment_percentage": {
+                          "type": "number",
+                          "example": 99.3
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "On Track"
+                        },
                         "regional_entries": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "properties": {
-                              "data_id": { "type": "string", "example": "DAT-001" },
-                              "region": { "type": "string", "example": "Dar es Salaam" },
-                              "district": { "type": "string", "example": "Ilala" },
-                              "actual_value": { "type": "number", "example": 95.8 },
-                              "target_value": { "type": "number", "example": 96.5 },
-                              "deviation": { "type": "number", "example": -0.7 },
-                              "status": { "type": "string", "example": "Approved" }
+                              "data_id": {
+                                "type": "string",
+                                "example": "DAT-001"
+                              },
+                              "region": {
+                                "type": "string",
+                                "example": "Dar es Salaam"
+                              },
+                              "district": {
+                                "type": "string",
+                                "example": "Ilala"
+                              },
+                              "actual_value": {
+                                "type": "number",
+                                "example": 95.8
+                              },
+                              "target_value": {
+                                "type": "number",
+                                "example": 96.5
+                              },
+                              "deviation": {
+                                "type": "number",
+                                "example": -0.7
+                              },
+                              "status": {
+                                "type": "string",
+                                "example": "Approved"
+                              }
                             }
                           }
                         }
@@ -108,8 +196,857 @@
         }
       }
     },
+    "/api/login": {
+      "post": {
+        "tags": [
+          "Authentication & Users"
+        ],
+        "summary": "Authenticate user",
+        "description": "Verifies user credentials and logs access history in the e-GA audit trail.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "admin@moe.go.tz"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "password123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "example": "mock-token-admin"
+                    },
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "example": "Hamis Juma"
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "admin@moe.go.tz"
+                        },
+                        "role": {
+                          "type": "string",
+                          "example": "System Administrator"
+                        },
+                        "dept": {
+                          "type": "string",
+                          "example": "ICT Unit"
+                        },
+                        "permissions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "example": [
+                            "view_dashboard",
+                            "submit_data",
+                            "verify_data",
+                            "approve_data",
+                            "manage_settings"
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          }
+        }
+      }
+    },
+    "/api/register": {
+      "post": {
+        "tags": [
+          "Authentication & Users"
+        ],
+        "summary": "Register a new user",
+        "description": "Registers a new system user. Restricted to authorized administrators.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password",
+                  "role"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Neema Temu"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "evaluator.national@moe.go.tz"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "password123"
+                  },
+                  "role": {
+                    "type": "string",
+                    "example": "National M&E Officer"
+                  },
+                  "dept": {
+                    "type": "string",
+                    "example": "M&E Section"
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "view_dashboard",
+                      "submit_data",
+                      "verify_data",
+                      "manage_settings"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          },
+          "403": {
+            "description": "Forbidden - admin only"
+          }
+        }
+      }
+    },
+    "/api/users": {
+      "get": {
+        "tags": [
+          "Authentication & Users"
+        ],
+        "summary": "List all users",
+        "description": "Returns list of all registered actors and their associated permissions.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 3
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Neema Temu"
+                          },
+                          "email": {
+                            "type": "string",
+                            "example": "evaluator.national@moe.go.tz"
+                          },
+                          "role": {
+                            "type": "string",
+                            "example": "National M&E Officer"
+                          },
+                          "dept": {
+                            "type": "string",
+                            "example": "M&E Section"
+                          },
+                          "permissions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/{id}": {
+      "put": {
+        "tags": [
+          "Authentication & Users"
+        ],
+        "summary": "Update user details",
+        "description": "Updates details, role, and custom scopes for a user.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User Email or Database ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Neema Temu Akwilapo"
+                  },
+                  "role": {
+                    "type": "string",
+                    "example": "National M&E Officer"
+                  },
+                  "dept": {
+                    "type": "string",
+                    "example": "M&E Directorate"
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "view_dashboard",
+                      "submit_data",
+                      "verify_data",
+                      "manage_settings"
+                    ]
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "newpassword123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Authentication & Users"
+        ],
+        "summary": "Delete user",
+        "description": "Removes a user account from the registry.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "User Email or Database ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/roles": {
+      "get": {
+        "tags": [
+          "Role Setup Configuration"
+        ],
+        "summary": "List all roles",
+        "description": "Returns list of all system roles and their default system permission scopes.",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "National M&E Officer"
+                          },
+                          "description": {
+                            "type": "string",
+                            "example": "Manages indicator registry parameters, creates frameworks, and verifies submissions."
+                          },
+                          "default_permissions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "example": [
+                              "view_dashboard",
+                              "submit_data",
+                              "verify_data",
+                              "manage_settings"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Role Setup Configuration"
+        ],
+        "summary": "Define a new system role",
+        "description": "Registers a new system role with a starting default permission set. Restricted to System Administrator role.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Special Inspector"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Role for temporary QA inspectorial audits."
+                  },
+                  "default_permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "view_dashboard",
+                      "submit_data"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role defined successfully"
+          },
+          "403": {
+            "description": "Forbidden - requires System Administrator role"
+          }
+        }
+      }
+    },
+    "/api/roles/{id}": {
+      "get": {
+        "tags": [
+          "Role Setup Configuration"
+        ],
+        "summary": "View a single role details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Role Name or Database ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Role Setup Configuration"
+        ],
+        "summary": "Update an existing system role",
+        "description": "Updates description and default permissions list for a role. Restricted to System Administrator.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Role Name or Database ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "description": {
+                    "type": "string",
+                    "example": "Updated role description"
+                  },
+                  "default_permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "view_dashboard",
+                      "submit_data",
+                      "verify_data"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Role Setup Configuration"
+        ],
+        "summary": "Delete a role",
+        "description": "Deletes the role configuration. Cannot delete the 'System Administrator' core configuration. Restricted to System Administrator.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Role Name or Database ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role deleted successfully"
+          },
+          "422": {
+            "description": "Validation Exception - cannot delete System Administrator"
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "List all strategic projects",
+        "responses": {
+          "200": {
+            "description": "Projects list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "project_id": {
+                            "type": "string",
+                            "example": "PRJ-001"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Higher Education Economic Transformation (HEET)"
+                          },
+                          "start_year": {
+                            "type": "integer",
+                            "example": 2021
+                          },
+                          "end_year": {
+                            "type": "integer",
+                            "example": 2026
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "Create a new project",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "project_id",
+                  "name",
+                  "start_year",
+                  "end_year"
+                ],
+                "properties": {
+                  "project_id": {
+                    "type": "string",
+                    "example": "PRJ-003"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Digital Literacy Project"
+                  },
+                  "start_year": {
+                    "type": "integer",
+                    "example": 2026
+                  },
+                  "end_year": {
+                    "type": "integer",
+                    "example": 2030
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project created"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}": {
+      "get": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "View project details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "Update project details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "HEET Modernized"
+                  },
+                  "start_year": {
+                    "type": "integer"
+                  },
+                  "end_year": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "Delete project",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/projects/{id}/nodes": {
+      "get": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "Get nodes belonging to a project",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "Add a project node",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "node_id",
+                  "level_type",
+                  "name"
+                ],
+                "properties": {
+                  "node_id": {
+                    "type": "string",
+                    "example": "PN-104"
+                  },
+                  "parent_node_id": {
+                    "type": "string",
+                    "example": "PN-102"
+                  },
+                  "level_type": {
+                    "type": "string",
+                    "example": "Sub-component"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Academic Equipment Procurement"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project node created"
+          }
+        }
+      }
+    },
+    "/api/project-nodes/{id}": {
+      "get": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "View project node details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "Update project node",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "New Component Name"
+                  },
+                  "level_type": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project node updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Strategic Projects & Hierarchy"
+        ],
+        "summary": "Delete project node",
+        "description": "Cannot delete if node has children.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project node deleted"
+          },
+          "422": {
+            "description": "Validation Error - has children"
+          }
+        }
+      }
+    },
     "/api/frameworks": {
       "get": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
         "summary": "List all strategic frameworks",
         "responses": {
           "200": {
@@ -124,10 +1061,22 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "framework_id": { "type": "string", "example": "FW-001" },
-                          "name": { "type": "string", "example": "ESDP III" },
-                          "start_year": { "type": "integer", "example": 2024 },
-                          "end_year": { "type": "integer", "example": 2029 }
+                          "framework_id": {
+                            "type": "string",
+                            "example": "FW-001"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "ESDP III"
+                          },
+                          "start_year": {
+                            "type": "integer",
+                            "example": 2024
+                          },
+                          "end_year": {
+                            "type": "integer",
+                            "example": 2029
+                          }
                         }
                       }
                     }
@@ -139,6 +1088,9 @@
         }
       },
       "post": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
         "summary": "Create a new strategic framework",
         "requestBody": {
           "required": true,
@@ -146,12 +1098,29 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["framework_id", "name", "start_year", "end_year"],
+                "required": [
+                  "framework_id",
+                  "name",
+                  "start_year",
+                  "end_year"
+                ],
                 "properties": {
-                  "framework_id": { "type": "string", "example": "FW-004" },
-                  "name": { "type": "string", "example": "Higher Education Action Plan" },
-                  "start_year": { "type": "integer", "example": 2026 },
-                  "end_year": { "type": "integer", "example": 2031 }
+                  "framework_id": {
+                    "type": "string",
+                    "example": "FW-004"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Higher Education Action Plan"
+                  },
+                  "start_year": {
+                    "type": "integer",
+                    "example": 2026
+                  },
+                  "end_year": {
+                    "type": "integer",
+                    "example": 2031
+                  }
                 }
               }
             }
@@ -164,17 +1133,107 @@
         }
       }
     },
-    "/api/frameworks/{id}/nodes": {
+    "/api/frameworks/{id}": {
       "get": {
-        "summary": "Get nodes for a strategic framework",
-        "description": "Returns all nodes belonging to the specified strategic framework.",
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
+        "summary": "View strategic framework",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
-            "description": "Framework ID (e.g. FW-001)"
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
+        "summary": "Update strategic framework",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "ESDP III Revised"
+                  },
+                  "start_year": {
+                    "type": "integer"
+                  },
+                  "end_year": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Framework updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
+        "summary": "Delete strategic framework",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Framework deleted successfully"
+          }
+        }
+      }
+    },
+    "/api/frameworks/{id}/nodes": {
+      "get": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
+        "summary": "Get nodes for a strategic framework",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -190,11 +1249,26 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "node_id": { "type": "string", "example": "N-101" },
-                          "framework_id": { "type": "string", "example": "FW-001" },
-                          "parent_node_id": { "type": "string", "example": null },
-                          "level_type": { "type": "string", "example": "Sub-sector" },
-                          "name": { "type": "string", "example": "Primary Education" }
+                          "node_id": {
+                            "type": "string",
+                            "example": "N-101"
+                          },
+                          "framework_id": {
+                            "type": "string",
+                            "example": "FW-001"
+                          },
+                          "parent_node_id": {
+                            "type": "string",
+                            "example": null
+                          },
+                          "level_type": {
+                            "type": "string",
+                            "example": "Sub-sector"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Primary Education"
+                          }
                         }
                       }
                     }
@@ -206,15 +1280,18 @@
         }
       },
       "post": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
         "summary": "Create a new framework node",
-        "description": "Creates a new framework node nested under the specified strategic framework.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
-            "description": "Framework ID (e.g. FW-001)"
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -223,12 +1300,28 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["node_id", "level_type", "name"],
+                "required": [
+                  "node_id",
+                  "level_type",
+                  "name"
+                ],
                 "properties": {
-                  "node_id": { "type": "string", "example": "N-106" },
-                  "parent_node_id": { "type": "string", "example": "N-101" },
-                  "level_type": { "type": "string", "example": "Focus Area" },
-                  "name": { "type": "string", "example": "Teacher Capacity Development" }
+                  "node_id": {
+                    "type": "string",
+                    "example": "N-106"
+                  },
+                  "parent_node_id": {
+                    "type": "string",
+                    "example": "N-101"
+                  },
+                  "level_type": {
+                    "type": "string",
+                    "example": "Focus Area"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Teacher Capacity Development"
+                  }
                 }
               }
             }
@@ -241,26 +1334,197 @@
         }
       }
     },
-    "/api/submit": {
-      "post": {
-        "summary": "Submit indicator actual data",
-        "description": "Logs a new numerical progress indicator entry. Inserts an immutable event to the e-GA audit log.",
+    "/api/nodes/{id}": {
+      "get": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
+        "summary": "View framework node details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
+        "summary": "Update framework node",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["indicator_id", "period", "actual_value", "region", "submitted_by", "source_category"],
                 "properties": {
-                  "indicator_id": { "type": "string", "example": "IND-001" },
-                  "period": { "type": "string", "example": "2024/25 Q4" },
-                  "actual_value": { "type": "number", "example": 96.2 },
-                  "region": { "type": "string", "example": "Dodoma" },
-                  "district": { "type": "string", "example": "Bahi" },
-                  "ward": { "type": "string", "example": "Bahi Ward" },
-                  "submitted_by": { "type": "string", "example": "deo.dodoma@moe.go.tz" },
-                  "source_category": { "type": "string", "example": "Government" }
+                  "name": {
+                    "type": "string",
+                    "example": "Primary Learning Quality"
+                  },
+                  "level_type": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Node updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Strategic Frameworks & Hierarchy"
+        ],
+        "summary": "Delete framework node",
+        "description": "Cannot delete if node has children.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Framework node deleted"
+          },
+          "422": {
+            "description": "Validation Error - has children"
+          }
+        }
+      }
+    },
+    "/api/indicators": {
+      "get": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "List all indicators",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "indicator_id": {
+                            "type": "string",
+                            "example": "IND-001"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Net Enrollment Rate (NER) - Primary"
+                          },
+                          "type": {
+                            "type": "string",
+                            "example": "Outcome"
+                          },
+                          "is_derived": {
+                            "type": "boolean",
+                            "example": false
+                          },
+                          "formula": {
+                            "type": "string",
+                            "example": null
+                          },
+                          "associated_node_id": {
+                            "type": "string",
+                            "example": "N-104"
+                          },
+                          "associated_project_node_id": {
+                            "type": "string",
+                            "example": "PN-101"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "Create a new indicator KPI",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "indicator_id",
+                  "name",
+                  "type",
+                  "is_derived"
+                ],
+                "properties": {
+                  "indicator_id": {
+                    "type": "string",
+                    "example": "IND-005"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Transition Rate to Secondary"
+                  },
+                  "type": {
+                    "type": "string",
+                    "example": "Outcome"
+                  },
+                  "is_derived": {
+                    "type": "boolean",
+                    "example": false
+                  },
+                  "formula": {
+                    "type": "string",
+                    "example": null
+                  },
+                  "associated_node_id": {
+                    "type": "string",
+                    "example": "N-102"
+                  },
+                  "associated_project_node_id": {
+                    "type": "string",
+                    "example": null
+                  }
                 }
               }
             }
@@ -268,22 +1532,707 @@
         },
         "responses": {
           "201": {
-            "description": "Logged successfully"
+            "description": "Indicator created"
+          }
+        }
+      }
+    },
+    "/api/indicators/{id}": {
+      "get": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "View indicator details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "Update indicator details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "Transition Rate to A-Level Secondary"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "is_derived": {
+                    "type": "boolean"
+                  },
+                  "formula": {
+                    "type": "string"
+                  },
+                  "associated_node_id": {
+                    "type": "string"
+                  },
+                  "associated_project_node_id": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Indicator updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "Delete indicator",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Indicator deleted"
+          }
+        }
+      }
+    },
+    "/api/indicators/{id}/metadata": {
+      "get": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "View indicator metadata details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "Update indicator metadata properties",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "type": "string",
+                    "example": "Ratio"
+                  },
+                  "frequency": {
+                    "type": "string",
+                    "example": "Annually"
+                  },
+                  "data_source": {
+                    "type": "string",
+                    "example": "EMIS System"
+                  },
+                  "verification_means": {
+                    "type": "string",
+                    "example": "Annual Census"
+                  },
+                  "responsible_unit": {
+                    "type": "string",
+                    "example": "Secondary Education Division"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Metadata updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "KPI Indicators & Metadata"
+        ],
+        "summary": "Delete indicator metadata",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Metadata deleted"
+          }
+        }
+      }
+    },
+    "/api/indicators/{id}/targets": {
+      "get": {
+        "tags": [
+          "Performance Targets"
+        ],
+        "summary": "Get targets mapping for an indicator",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/targets": {
+      "get": {
+        "tags": [
+          "Performance Targets"
+        ],
+        "summary": "List all targets",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "indicator_id": {
+                            "type": "string",
+                            "example": "IND-001"
+                          },
+                          "framework_id": {
+                            "type": "string"
+                          },
+                          "financial_year": {
+                            "type": "string",
+                            "example": "2024/25"
+                          },
+                          "target_type": {
+                            "type": "string",
+                            "example": "Regional"
+                          },
+                          "region": {
+                            "type": "string",
+                            "example": "Dar es Salaam"
+                          },
+                          "baseline_year": {
+                            "type": "string"
+                          },
+                          "baseline_value": {
+                            "type": "number"
+                          },
+                          "target_value": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Performance Targets"
+        ],
+        "summary": "Create performance targets",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "indicator_id",
+                  "financial_year",
+                  "target_value"
+                ],
+                "properties": {
+                  "indicator_id": {
+                    "type": "string",
+                    "example": "IND-001"
+                  },
+                  "framework_id": {
+                    "type": "string",
+                    "example": "FW-001"
+                  },
+                  "financial_year": {
+                    "type": "string",
+                    "example": "2024/25"
+                  },
+                  "target_type": {
+                    "type": "string",
+                    "example": "Regional"
+                  },
+                  "region": {
+                    "type": "string",
+                    "example": "Mtwara"
+                  },
+                  "baseline_year": {
+                    "type": "string",
+                    "example": "2023"
+                  },
+                  "baseline_value": {
+                    "type": "number",
+                    "example": 85.0
+                  },
+                  "target_value": {
+                    "type": "number",
+                    "example": 90.0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Target created"
+          }
+        }
+      }
+    },
+    "/api/targets/{id}": {
+      "get": {
+        "tags": [
+          "Performance Targets"
+        ],
+        "summary": "View target details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Performance Targets"
+        ],
+        "summary": "Update target properties",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "target_value": {
+                    "type": "number",
+                    "example": 92.5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Target updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Performance Targets"
+        ],
+        "summary": "Delete target",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Target deleted"
+          }
+        }
+      }
+    },
+    "/api/submissions": {
+      "get": {
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "List actual data submissions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "data_id": {
+                            "type": "string"
+                          },
+                          "indicator_id": {
+                            "type": "string"
+                          },
+                          "period": {
+                            "type": "string"
+                          },
+                          "actual_value": {
+                            "type": "number"
+                          },
+                          "region": {
+                            "type": "string"
+                          },
+                          "district": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "example": "Submitted"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "Submit actual data progress (alias for /api/submit)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "indicator_id",
+                  "period",
+                  "actual_value",
+                  "region",
+                  "submitted_by",
+                  "source_category"
+                ],
+                "properties": {
+                  "indicator_id": {
+                    "type": "string",
+                    "example": "IND-001"
+                  },
+                  "period": {
+                    "type": "string",
+                    "example": "2024/25 Q4"
+                  },
+                  "actual_value": {
+                    "type": "number",
+                    "example": 96.2
+                  },
+                  "region": {
+                    "type": "string",
+                    "example": "Dodoma"
+                  },
+                  "district": {
+                    "type": "string",
+                    "example": "Bahi"
+                  },
+                  "ward": {
+                    "type": "string",
+                    "example": "Bahi Ward"
+                  },
+                  "submitted_by": {
+                    "type": "string",
+                    "example": "deo.dodoma@moe.go.tz"
+                  },
+                  "source_category": {
+                    "type": "string",
+                    "example": "Official_Gov"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Submitted successfully"
+          }
+        }
+      }
+    },
+    "/api/submissions/{id}": {
+      "get": {
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "View data submission details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "Update data submission value",
+        "description": "Edits the entry value. If already Verified or Approved, updating the value resets its status to 'Submitted'.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "actual_value": {
+                    "type": "number",
+                    "example": 97.5
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Submission updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "Delete data submission",
+        "description": "Performs soft-delete.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Submission deleted"
+          }
+        }
+      }
+    },
+    "/api/submit": {
+      "post": {
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "Submit actual progress indicators data",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "indicator_id",
+                  "period",
+                  "actual_value",
+                  "region",
+                  "submitted_by",
+                  "source_category"
+                ],
+                "properties": {
+                  "indicator_id": {
+                    "type": "string",
+                    "example": "IND-001"
+                  },
+                  "period": {
+                    "type": "string",
+                    "example": "2024/25 Q4"
+                  },
+                  "actual_value": {
+                    "type": "number",
+                    "example": 96.2
+                  },
+                  "region": {
+                    "type": "string",
+                    "example": "Dodoma"
+                  },
+                  "district": {
+                    "type": "string",
+                    "example": "Bahi"
+                  },
+                  "ward": {
+                    "type": "string",
+                    "example": "Bahi Ward"
+                  },
+                  "submitted_by": {
+                    "type": "string",
+                    "example": "deo.dodoma@moe.go.tz"
+                  },
+                  "source_category": {
+                    "type": "string",
+                    "example": "Official_Gov"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Submitted successfully"
           }
         }
       }
     },
     "/api/submissions/{id}/verify": {
       "post": {
-        "summary": "Verify a data submission entry",
-        "description": "Transitions record status to 'Verified' for M&E review.",
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "Verify actual progress entry",
+        "description": "Transitions record status to 'Verified'. Requires verify_data permission.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
-            "description": "Submission record ID (e.g. DAT-001)"
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -292,28 +2241,37 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "verifier_username": { "type": "string", "example": "evaluator.national@moe.go.tz" }
+                  "verifier_username": {
+                    "type": "string",
+                    "example": "evaluator.national@moe.go.tz"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Verification status updated" }
+          "200": {
+            "description": "Entry marked as Verified"
+          }
         }
       }
     },
     "/api/submissions/{id}/approve": {
       "post": {
-        "summary": "Approve a verified submission",
-        "description": "Transitions record status to 'Approved' making it active in executive aggregations.",
+        "tags": [
+          "Data Entry Submissions"
+        ],
+        "summary": "Approve actual progress entry",
+        "description": "Transitions record status to 'Approved'. Requires approve_data permission.",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
-            "description": "Submission record ID (e.g. DAT-001)"
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -322,19 +2280,395 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "approver_username": { "type": "string", "example": "executive@moe.go.tz" }
+                  "approver_username": {
+                    "type": "string",
+                    "example": "executive@moe.go.tz"
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Submission approved" }
+          "200": {
+            "description": "Entry marked as Approved"
+          }
+        }
+      }
+    },
+    "/api/activities": {
+      "get": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "List all activities",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "activity_id": {
+                            "type": "string",
+                            "example": "ACT-001"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Construction of classrooms"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "start_date": {
+                            "type": "string"
+                          },
+                          "end_date": {
+                            "type": "string"
+                          },
+                          "budget": {
+                            "type": "number"
+                          },
+                          "owner_unit": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "Create a new activity registry",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity_id",
+                  "name",
+                  "budget"
+                ],
+                "properties": {
+                  "activity_id": {
+                    "type": "string",
+                    "example": "ACT-005"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Teacher training seminar"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Capacity enhancement."
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "example": "2026-07-01"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "example": "2027-06-30"
+                  },
+                  "budget": {
+                    "type": "number",
+                    "example": 150000.0
+                  },
+                  "owner_unit": {
+                    "type": "string",
+                    "example": "Teacher Education Division"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Activity created"
+          }
+        }
+      }
+    },
+    "/api/activities/{id}": {
+      "get": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "View activity details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "Update activity details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "budget": {
+                    "type": "number"
+                  },
+                  "description": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Activity updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "Delete activity",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activity deleted"
+          }
+        }
+      }
+    },
+    "/api/mappings": {
+      "get": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "List all activity mappings",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "Map activity to results chain node",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "activity_id",
+                  "node_id"
+                ],
+                "properties": {
+                  "activity_id": {
+                    "type": "string",
+                    "example": "ACT-001"
+                  },
+                  "node_id": {
+                    "type": "string",
+                    "example": "N-104"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mapping created"
+          }
+        }
+      }
+    },
+    "/api/mappings/{id}": {
+      "get": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "View mapping details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "Update mapping details",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "node_id": {
+                    "type": "string",
+                    "example": "N-105"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mapping updated"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Activities & Alignment Mappings"
+        ],
+        "summary": "Delete mapping",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Mapping deleted"
+          }
+        }
+      }
+    },
+    "/api/reports": {
+      "get": {
+        "tags": [
+          "Analytics & Reports"
+        ],
+        "summary": "Generate compilation reports",
+        "description": "Resolves reporting parameters to compile dynamic reports data lists.",
+        "parameters": [
+          {
+            "name": "framework_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "project_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "period",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compilation report generated"
+          }
         }
       }
     },
     "/api/audit-logs": {
       "get": {
+        "tags": [
+          "Security & Audits"
+        ],
         "summary": "Get e-GA system audit trail logs",
         "description": "Returns logs of all system-wide updates, sync actions, and user session logins.",
         "responses": {
@@ -350,12 +2684,30 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "log_id": { "type": "integer", "example": 1 },
-                          "timestamp": { "type": "string", "example": "2026-06-23T10:00:00Z" },
-                          "username": { "type": "string", "example": "admin@moe.go.tz" },
-                          "action": { "type": "string", "example": "CREATE" },
-                          "entity": { "type": "string", "example": "Indicator" },
-                          "details": { "type": "string", "example": "Added new indicator IND-004" }
+                          "log_id": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "example": "2026-06-23T10:00:00Z"
+                          },
+                          "username": {
+                            "type": "string",
+                            "example": "admin@moe.go.tz"
+                          },
+                          "action": {
+                            "type": "string",
+                            "example": "CREATE"
+                          },
+                          "entity": {
+                            "type": "string",
+                            "example": "Indicator"
+                          },
+                          "details": {
+                            "type": "string",
+                            "example": "Added new indicator IND-004"
+                          }
                         }
                       }
                     }

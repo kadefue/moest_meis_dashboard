@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { getTable, logAction } from '../MockData';
+import axios from 'axios';
+import { getTable, logAction, API_BASE } from '../MockData';
 import tanzaniaLogo from '../images/Coat_of_arms_of_Tanzania.svg';
 
 export default function LoginScreen({ onLoginSuccess }) {
@@ -10,15 +11,40 @@ export default function LoginScreen({ onLoginSuccess }) {
   const [mfaCode, setMfaCode] = useState('');
   const [validatedUser, setValidatedUser] = useState(null);
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    // Try backend authentication
+    try {
+      const response = await axios.post(`${API_BASE}/login`, {
+        email: username,
+        password: password
+      });
+      const userData = response.data.data;
+      setValidatedUser({
+        username: userData.username,
+        name: userData.name,
+        role: userData.role,
+        dept: userData.dept,
+        permissions: userData.permissions,
+        token: userData.token
+      });
+      setShowMfa(true);
+      return;
+    } catch (apiError) {
+      if (apiError.response && apiError.response.status === 401) {
+        setError('Invalid username or password. Please try again.');
+        return;
+      }
+      console.warn('Backend authentication failed, falling back to local database lookup:', apiError);
+    }
+
+    // Fallback local DB check
     const users = getTable('users');
     const matchedUser = users.find(u => u.username.toLowerCase() === username.toLowerCase());
 
     if (matchedUser && password === 'password123') {
-      // Simulate MFA for government logins
       setValidatedUser(matchedUser);
       setShowMfa(true);
     } else {

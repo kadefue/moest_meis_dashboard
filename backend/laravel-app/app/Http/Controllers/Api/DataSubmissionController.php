@@ -23,6 +23,14 @@ class DataSubmissionController extends Controller
             'source_category' => 'required|string|max:50',
         ]);
 
+        $username = $request->header('X-User-Username') ?: $validated['submitted_by'];
+        if ($username) {
+            $user = \App\Models\User::where('email', strtolower($username))->first();
+            if ($user && is_array($user->permissions) && !in_array('submit_data', $user->permissions)) {
+                return response()->json(['error' => 'Forbidden', 'message' => 'You do not have permission to submit data.'], 403);
+            }
+        }
+
         // MSDD Page 8 constraint: Attempting to post a record to ACTUAL_DATA referencing an indicator with is_derived = TRUE triggers an automatic validation exception.
         $indicator = \App\Models\Indicator::find($validated['indicator_id']);
         if ($indicator && $indicator->is_derived) {
@@ -60,7 +68,14 @@ class DataSubmissionController extends Controller
             return response()->json(['error' => 'Submission record not found'], 404);
         }
 
-        $verifier = $request->input('verifier_username', 'coordinator.national@moe.go.tz');
+        $verifier = $request->header('X-User-Username') ?: $request->input('verifier_username', 'coordinator.national@moe.go.tz');
+
+        if ($verifier) {
+            $user = \App\Models\User::where('email', strtolower($verifier))->first();
+            if ($user && is_array($user->permissions) && !in_array('verify_data', $user->permissions)) {
+                return response()->json(['error' => 'Forbidden', 'message' => 'You do not have permission to verify data.'], 403);
+            }
+        }
 
         $entry->update(['status' => 'Verified']);
 
@@ -82,7 +97,14 @@ class DataSubmissionController extends Controller
             return response()->json(['error' => 'Submission record not found'], 404);
         }
 
-        $approver = $request->input('approver_username', 'executive@moe.go.tz');
+        $approver = $request->header('X-User-Username') ?: $request->input('approver_username', 'executive@moe.go.tz');
+
+        if ($approver) {
+            $user = \App\Models\User::where('email', strtolower($approver))->first();
+            if ($user && is_array($user->permissions) && !in_array('approve_data', $user->permissions)) {
+                return response()->json(['error' => 'Forbidden', 'message' => 'You do not have permission to approve data.'], 403);
+            }
+        }
 
         $entry->update(['status' => 'Approved']);
 
@@ -120,6 +142,19 @@ class DataSubmissionController extends Controller
     protected function authorizeActor($submittedBy, Request $request): bool
     {
         $actorUsername = $request->header('X-User-Username') ?: $request->input('updated_by') ?: $request->input('deleted_by');
+        
+        if ($actorUsername) {
+            $user = \App\Models\User::where('email', strtolower($actorUsername))->first();
+            if ($user && is_array($user->permissions)) {
+                if (in_array('manage_settings', $user->permissions)) {
+                    return true;
+                }
+                if (in_array('submit_data', $user->permissions) && $submittedBy && strtolower($submittedBy) === strtolower($actorUsername)) {
+                    return true;
+                }
+            }
+        }
+
         $actorRole = $request->header('X-User-Role');
 
         // Permit System Administrator and National M&E Officer

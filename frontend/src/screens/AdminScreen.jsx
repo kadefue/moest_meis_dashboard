@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getTable, saveTable, logAction } from '../MockData';
 import AuditLogViewer from '../components/AuditLogViewer';
 import SearchableSelect from '../components/SearchableSelect';
+import Modal from '../components/Modal';
+import { useToast } from '../components/ToastProvider';
 
 export default function AdminScreen({ user }) {
   const [activeTab, setActiveTab] = useState('users');
@@ -19,6 +21,24 @@ export default function AdminScreen({ user }) {
   const [projects, setProjects] = useState([]);
   const [projectNodes, setProjectNodes] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
+
+  // User Management Form States
+  const [isEditingUser, setIsEditingUser] = useState(false);
+  const [userFormName, setUserFormName] = useState('');
+  const [userFormEmail, setUserFormEmail] = useState('');
+  const [userFormDept, setUserFormDept] = useState('');
+  const [userFormRole, setUserFormRole] = useState('School Data Entry Officer');
+  const [userFormPassword, setUserFormPassword] = useState('');
+  const [userFormPermissions, setUserFormPermissions] = useState(['view_dashboard', 'submit_data']);
+
+  // Role Setup Form States
+  const [roles, setRoles] = useState([]);
+  const [subTab, setSubTab] = useState('users');
+  const [isEditingRole, setIsEditingRole] = useState(false);
+  const [roleFormName, setRoleFormName] = useState('');
+  const [roleFormDesc, setRoleFormDesc] = useState('');
+  const [roleFormPermissions, setRoleFormPermissions] = useState(['view_dashboard']);
+  const [showUserModal, setShowUserModal] = useState(false);
   
   // Framework Form State
   const [newFwId, setNewFwId] = useState('');
@@ -90,7 +110,244 @@ export default function AdminScreen({ user }) {
     } else {
       localStorage.setItem('me_prj_level_types', JSON.stringify(['Component', 'Sub-component', 'Key Result Area', 'Activity Group']));
     }
+
+    setRoles(getTable('roles'));
   }, []);
+
+  const { addToast } = useToast();
+
+  const handleToggleRolePermission = (perm) => {
+    setRoleFormPermissions(prev => 
+      prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+    );
+  };
+
+  const handleSelectRoleForEdit = (targetRole) => {
+    setIsEditingRole(true);
+    setRoleFormName(targetRole.name);
+    setRoleFormDesc(targetRole.description || '');
+    setRoleFormPermissions(targetRole.default_permissions || []);
+  };
+
+  const handleCancelEditRole = () => {
+    setIsEditingRole(false);
+    setRoleFormName('');
+    setRoleFormDesc('');
+    setRoleFormPermissions(['view_dashboard']);
+  };
+
+  const handleSaveRole = (e) => {
+    e.preventDefault();
+    if (!roleFormName) {
+      alert('Role Name is required.');
+      return;
+    }
+
+    const currentRoles = getTable('roles');
+
+    if (isEditingRole) {
+      const updated = currentRoles.map(r => {
+        if (r.name.toLowerCase() === roleFormName.toLowerCase()) {
+          return {
+            ...r,
+            description: roleFormDesc,
+            default_permissions: roleFormPermissions
+          };
+        }
+        return r;
+      });
+
+      saveTable('roles', updated);
+      setRoles(updated);
+      logAction(user.username, 'UPDATE', 'Role Configuration', `Updated default permissions for role ${roleFormName}`);
+      alert('Role configuration updated successfully.');
+      handleCancelEditRole();
+    } else {
+      if (currentRoles.some(r => r.name.toLowerCase() === roleFormName.toLowerCase())) {
+        alert('A role with this name already exists.');
+        return;
+      }
+
+      const newRole = {
+        name: roleFormName,
+        description: roleFormDesc,
+        default_permissions: roleFormPermissions
+      };
+
+      const updated = [...currentRoles, newRole];
+      saveTable('roles', updated);
+      setRoles(updated);
+      logAction(user.username, 'CREATE', 'Role Configuration', `Defined new system role: ${roleFormName}`);
+      alert('New role defined successfully.');
+      handleCancelEditRole();
+    }
+  };
+
+  const handleDeleteRole = (roleNameToDelete) => {
+    if (roleNameToDelete === 'System Administrator') {
+      alert('The System Administrator role is a core configuration and cannot be deleted!');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete the role "${roleNameToDelete}"?`)) {
+      return;
+    }
+
+    const currentRoles = getTable('roles');
+    const updated = currentRoles.filter(r => r.name.toLowerCase() !== roleNameToDelete.toLowerCase());
+
+    saveTable('roles', updated);
+    setRoles(updated);
+    logAction(user.username, 'DELETE', 'Role Configuration', `Deleted role: ${roleNameToDelete}`);
+    alert('Role configuration deleted successfully.');
+  };
+
+  const handleTogglePermission = (perm) => {
+    setUserFormPermissions(prev => 
+      prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+    );
+  };
+
+  const handleRoleChangeInForm = (role) => {
+    setUserFormRole(role);
+    switch (role) {
+      case 'System Administrator':
+        setUserFormPermissions(['view_dashboard', 'submit_data', 'verify_data', 'approve_data', 'manage_settings']);
+        break;
+      case 'MoEST Leadership':
+        setUserFormPermissions(['view_dashboard', 'approve_data']);
+        break;
+      case 'National M&E Officer':
+        setUserFormPermissions(['view_dashboard', 'submit_data', 'verify_data', 'manage_settings']);
+        break;
+      case 'Regional M&E Officer':
+        setUserFormPermissions(['view_dashboard', 'submit_data', 'verify_data']);
+        break;
+      case 'District Education Officer':
+      case 'School Data Entry Officer':
+      default:
+        setUserFormPermissions(['view_dashboard', 'submit_data']);
+        break;
+    }
+  };
+
+  const handleSelectUserForEdit = (targetUser) => {
+    setIsEditingUser(true);
+    setUserFormName(targetUser.name);
+    setUserFormEmail(targetUser.username);
+    setUserFormDept(targetUser.dept || '');
+    setUserFormRole(targetUser.role);
+    setUserFormPermissions(targetUser.permissions || []);
+    setUserFormPassword('');
+    setShowUserModal(true);
+  };
+
+  const handleCancelEditUser = () => {
+    setIsEditingUser(false);
+    setUserFormName('');
+    setUserFormEmail('');
+    setUserFormDept('');
+    setUserFormRole('School Data Entry Officer');
+    setUserFormPermissions(['view_dashboard', 'submit_data']);
+    setUserFormPassword('');
+    setShowUserModal(false);
+  };
+
+  const handleSaveUser = (e) => {
+    e.preventDefault();
+    if (!userFormName || !userFormEmail || !userFormRole) {
+      addToast({ message: 'Please fill out all required fields.', type: 'warning' });
+      return;
+    }
+
+    const currentUsers = getTable('users');
+
+    if (isEditingUser) {
+      const updated = currentUsers.map(u => {
+        if (u.username.toLowerCase() === userFormEmail.toLowerCase()) {
+          const updatedUser = {
+            ...u,
+            name: userFormName,
+            role: userFormRole,
+            dept: userFormDept,
+            permissions: userFormPermissions
+          };
+          if (userFormPassword) {
+            updatedUser.password = userFormPassword;
+          }
+          return updatedUser;
+        }
+        return u;
+      });
+
+      saveTable('users', updated);
+      setUsers(updated.map(u => ({
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        role: u.role,
+        dept: u.dept,
+        permissions: u.permissions
+      })));
+      logAction(user.username, 'UPDATE', 'User Scopes', `Updated role/permissions for user ${userFormEmail}`);
+      addToast({ message: 'User settings updated successfully.', type: 'success' });
+      handleCancelEditUser();
+    } else {
+      if (currentUsers.some(u => u.username.toLowerCase() === userFormEmail.toLowerCase())) {
+        addToast({ message: 'A user with this email/username already exists.', type: 'warning' });
+        return;
+      }
+
+      const newUser = {
+        name: userFormName,
+        username: userFormEmail,
+        role: userFormRole,
+        dept: userFormDept,
+        permissions: userFormPermissions,
+        password: userFormPassword || 'password123'
+      };
+
+      const updated = [...currentUsers, newUser];
+      saveTable('users', updated);
+      setUsers(updated.map(u => ({
+        id: u.id,
+        name: u.name,
+        username: u.username,
+        role: u.role,
+        dept: u.dept,
+        permissions: u.permissions
+      })));
+      logAction(user.username, 'CREATE', 'User registration', `Registered new user: ${userFormEmail} as ${userFormRole}`);
+      addToast({ message: 'User registered successfully.', type: 'success' });
+      handleCancelEditUser();
+    }
+  };
+
+  const handleDeleteUser = (usernameToDelete) => {
+    if (usernameToDelete.toLowerCase() === user.username.toLowerCase()) {
+      addToast({ message: 'You cannot delete your own account while logged in!', type: 'warning' });
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete user ${usernameToDelete}?`)) {
+      return;
+    }
+
+    const currentUsers = getTable('users');
+    const updated = currentUsers.filter(u => u.username.toLowerCase() !== usernameToDelete.toLowerCase());
+
+    saveTable('users', updated);
+    setUsers(updated.map(u => ({
+      id: u.id,
+      name: u.name,
+      username: u.username,
+      role: u.role,
+      dept: u.dept,
+      permissions: u.permissions
+    })));
+    logAction(user.username, 'DELETE', 'User management', `Deleted user account: ${usernameToDelete}`);
+    addToast({ message: 'User account deleted successfully.', type: 'success' });
+  };
 
   const handleCreateFramework = (e) => {
     e.preventDefault();
@@ -501,43 +758,534 @@ export default function AdminScreen({ user }) {
       
       {/* 1. USERS */}
       {activeTab === 'users' && (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <h3>System Users and Scopes</h3>
-            <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => alert('New user registration matches MoEST LDAP Active Directory.')}>
-              + Add User
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+          
+          {/* Sub-Tabs Selector */}
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--neutral-300)', gap: '12px', paddingBottom: '10px', marginBottom: '8px' }}>
+            <button 
+              className="btn btn-secondary" 
+              style={{ 
+                background: subTab === 'users' ? 'var(--primary)' : 'transparent',
+                color: subTab === 'users' ? 'white' : 'var(--neutral-700)',
+                border: 'none',
+                padding: '6px 16px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                fontSize: '0.85rem'
+              }}
+              onClick={() => setSubTab('users')}
+            >
+              👤 Users Management
+            </button>
+            <button 
+              className="btn btn-secondary" 
+              style={{ 
+                background: subTab === 'roles' ? 'var(--primary)' : 'transparent',
+                color: subTab === 'roles' ? 'white' : 'var(--neutral-700)',
+                border: 'none',
+                padding: '6px 16px',
+                borderRadius: 'var(--radius-sm)',
+                fontWeight: 600,
+                fontSize: '0.85rem'
+              }}
+              onClick={() => setSubTab('roles')}
+            >
+              🔑 Role Registry Setup
             </button>
           </div>
-          <div className="table-container" style={{ margin: 0 }}>
-            <table className="custom-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email / Username</th>
-                  <th>Assigned Role</th>
-                  <th>Division / Scope</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.username}>
-                    <td style={{ fontWeight: 600 }}>{u.name}</td>
-                    <td>{u.username}</td>
-                    <td><span className="badge badge-info">{u.role}</span></td>
-                    <td>{u.dept}</td>
-                    <td>
-                      <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => alert('Editing user authorizations')}>
-                        Edit Scope
-                      </button>
-                    </td>
+
+          {subTab === 'users' && (
+            <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '24px', alignItems: 'start' }}>
+              
+              {!isAuthorized && (
+                <div style={{
+                  backgroundColor: '#fffbeb',
+                  border: '1px solid #fef3c7',
+                  color: '#b45309',
+                  padding: '16px',
+                  borderRadius: 'var(--radius-md)',
+                  gridColumn: '1 / span 2',
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <span>⚠️</span>
+                  <div>
+                    <strong>Read-Only View:</strong> You are not authorized to modify user accounts or assign system permissions.
+                  </div>
+                </div>
+              )}
+
+          {/* Left Panel: Users List */}
+          <div className="card">
+            <h3>System Users and Scopes</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--neutral-600)', marginBottom: '16px' }}>
+              List of registered actors, roles, and assigned granular system permissions.
+            </p>
+            <div className="table-container" style={{ margin: 0 }}>
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email / Username</th>
+                    <th>Role</th>
+                    <th>Division</th>
+                    <th>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.username}>
+                      <td style={{ fontWeight: 600 }}>{u.name}</td>
+                      <td>{u.username}</td>
+                      <td><span className="badge badge-info">{u.role}</span></td>
+                      <td>{u.dept}</td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '4px 8px', fontSize: '0.7rem', opacity: isAuthorized ? 1 : 0.5, cursor: isAuthorized ? 'pointer' : 'not-allowed' }}
+                            onClick={() => isAuthorized ? handleSelectUserForEdit(u) : null}
+                            disabled={!isAuthorized}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="btn btn-danger" 
+                            style={{ padding: '4px 8px', fontSize: '0.7rem', opacity: isAuthorized ? 1 : 0.5, cursor: isAuthorized ? 'pointer' : 'not-allowed' }}
+                            onClick={() => isAuthorized ? handleDeleteUser(u.username) : null}
+                            disabled={!isAuthorized}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Right Panel: Add or Edit User Form */}
+          <div className="card" style={{ opacity: isAuthorized ? 1 : 0.75 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <h3 style={{ margin: 0 }}>{isEditingUser ? 'Edit User Permissions' : 'Register New User'}</h3>
+              <button type="button" className="btn btn-primary" onClick={() => { handleCancelEditUser(); setShowUserModal(true); }} disabled={!isAuthorized}>
+                + New User
+              </button>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--neutral-600)', marginBottom: '16px' }}>
+              {isEditingUser ? 'Modify user details, role, and custom scopes.' : 'Create a new user account with role and granular permissions.'}
+            </p>
+
+            <form onSubmit={isAuthorized ? handleSaveUser : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Full Name</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. John Doe"
+                  value={userFormName}
+                  onChange={e => setUserFormName(e.target.value)}
+                  required 
+                  disabled={!isAuthorized}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Email / Username</label>
+                <input 
+                  type="email" 
+                  className="form-control" 
+                  placeholder="e.g. jdoe@moe.go.tz"
+                  value={userFormEmail}
+                  onChange={e => setUserFormEmail(e.target.value)}
+                  required 
+                  disabled={!isAuthorized || isEditingUser}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Department / Division</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. Primary Education Division"
+                  value={userFormDept}
+                  onChange={e => setUserFormDept(e.target.value)}
+                  disabled={!isAuthorized}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Assigned Role</label>
+                <select 
+                  className="form-control"
+                  value={userFormRole}
+                  onChange={e => handleRoleChangeInForm(e.target.value)}
+                  required
+                  disabled={!isAuthorized || user?.role !== 'System Administrator'}
+                  title={user?.role !== 'System Administrator' ? "Only System Administrators can assign roles to users" : ""}
+                >
+                  {roles.map(r => (
+                    <option key={r.name} value={r.name}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                  Password {isEditingUser && <span style={{ color: 'var(--neutral-500)', fontWeight: 400 }}>(leave blank to keep current)</span>}
+                </label>
+                <input 
+                  type="password" 
+                  className="form-control" 
+                  placeholder={isEditingUser ? "••••••••" : "Password (min 6 chars)"}
+                  value={userFormPassword}
+                  onChange={e => setUserFormPassword(e.target.value)}
+                  required={!isEditingUser}
+                  disabled={!isAuthorized}
+                />
+              </div>
+
+              {/* Permissions Checkbox Grid */}
+              <div style={{ marginTop: '8px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '8px' }}>System Permissions</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--neutral-100)', borderRadius: 'var(--radius-sm)' }}>
+                  
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={userFormPermissions.includes('view_dashboard')}
+                      onChange={() => handleTogglePermission('view_dashboard')}
+                      disabled={!isAuthorized}
+                    />
+                    <span>📊 View Dashboard & Performance KPIs</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={userFormPermissions.includes('submit_data')}
+                      onChange={() => handleTogglePermission('submit_data')}
+                      disabled={!isAuthorized}
+                    />
+                    <span>📝 Submit/Edit Actual Data Entries</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={userFormPermissions.includes('verify_data')}
+                      onChange={() => handleTogglePermission('verify_data')}
+                      disabled={!isAuthorized}
+                    />
+                    <span>🔍 Verify Submissions (Workflow Step 1)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={userFormPermissions.includes('approve_data')}
+                      onChange={() => handleTogglePermission('approve_data')}
+                      disabled={!isAuthorized}
+                    />
+                    <span>✅ Approve Submissions (Workflow Step 2)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={userFormPermissions.includes('manage_settings')}
+                      onChange={() => handleTogglePermission('manage_settings')}
+                      disabled={!isAuthorized}
+                    />
+                    <span>⚙️ Manage Settings & Structures</span>
+                  </label>
+
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={!isAuthorized}>
+                  {isEditingUser ? 'Update User' : 'Register User'}
+                </button>
+                {isEditingUser && (
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={handleCancelEditUser}
+                    disabled={!isAuthorized}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+          {showUserModal && (
+            <Modal title={isEditingUser ? 'Edit User' : 'Register New User'} onClose={() => { setShowUserModal(false); handleCancelEditUser(); }} footer={null}>
+              <form onSubmit={isAuthorized ? handleSaveUser : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Full Name</label>
+                  <input type="text" className="form-control" placeholder="e.g. John Doe" value={userFormName} onChange={e => setUserFormName(e.target.value)} required disabled={!isAuthorized} />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Email / Username</label>
+                  <input type="email" className="form-control" placeholder="e.g. jdoe@moe.go.tz" value={userFormEmail} onChange={e => setUserFormEmail(e.target.value)} required disabled={!isAuthorized || isEditingUser} />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Department / Division</label>
+                  <input type="text" className="form-control" placeholder="e.g. Primary Education Division" value={userFormDept} onChange={e => setUserFormDept(e.target.value)} disabled={!isAuthorized} />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Assigned Role</label>
+                  <select className="form-control" value={userFormRole} onChange={e => handleRoleChangeInForm(e.target.value)} required disabled={!isAuthorized || user?.role !== 'System Administrator'} title={user?.role !== 'System Administrator' ? "Only System Administrators can assign roles to users" : ""}>
+                    {roles.map(r => (
+                      <option key={r.name} value={r.name}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Password {isEditingUser && <span style={{ color: 'var(--neutral-500)', fontWeight: 400 }}>(leave blank to keep current)</span>}</label>
+                  <input type="password" className="form-control" placeholder={isEditingUser ? "••••••••" : "Password (min 6 chars)"} value={userFormPassword} onChange={e => setUserFormPassword(e.target.value)} required={!isEditingUser} disabled={!isAuthorized} />
+                </div>
+
+                <div style={{ marginTop: '8px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '8px' }}>System Permissions</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--neutral-100)', borderRadius: 'var(--radius-sm)' }}>
+                    {/* Permissions checkboxes (same as inline form) */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                      <input type="checkbox" checked={userFormPermissions.includes('view_dashboard')} onChange={() => handleTogglePermission('view_dashboard')} disabled={!isAuthorized} />
+                      <span>📊 View Dashboard & Performance KPIs</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                      <input type="checkbox" checked={userFormPermissions.includes('submit_data')} onChange={() => handleTogglePermission('submit_data')} disabled={!isAuthorized} />
+                      <span>📝 Submit/Edit Actual Data Entries</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                      <input type="checkbox" checked={userFormPermissions.includes('verify_data')} onChange={() => handleTogglePermission('verify_data')} disabled={!isAuthorized} />
+                      <span>🔍 Verify Submissions (Workflow Step 1)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                      <input type="checkbox" checked={userFormPermissions.includes('approve_data')} onChange={() => handleTogglePermission('approve_data')} disabled={!isAuthorized} />
+                      <span>✅ Approve Submissions (Workflow Step 2)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: isAuthorized ? 'pointer' : 'not-allowed' }}>
+                      <input type="checkbox" checked={userFormPermissions.includes('manage_settings')} onChange={() => handleTogglePermission('manage_settings')} disabled={!isAuthorized} />
+                      <span>⚙️ Manage Settings & Structures</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={!isAuthorized}>{isEditingUser ? 'Update User' : 'Register User'}</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => { setShowUserModal(false); handleCancelEditUser(); }} disabled={!isAuthorized}>Cancel</button>
+                </div>
+              </form>
+            </Modal>
+          )}
+        </div>
+      )}
+
+      {subTab === 'roles' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '24px', alignItems: 'start' }}>
+          
+          {user?.role !== 'System Administrator' && (
+            <div style={{
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fef3c7',
+              color: '#b45309',
+              padding: '16px',
+              borderRadius: 'var(--radius-md)',
+              gridColumn: '1 / span 2',
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span>⚠️</span>
+              <div>
+                <strong>Read-Only View:</strong> Only System Administrators can configure system roles and default permissions.
+              </div>
+            </div>
+          )}
+
+          {/* Left Panel: Roles List */}
+          <div className="card">
+            <h3>Role Registry Setup</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--neutral-600)', marginBottom: '16px' }}>
+              Manage system roles and configure their default system permission scopes.
+            </p>
+            <div className="table-container" style={{ margin: 0 }}>
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Role Name</th>
+                    <th>Description</th>
+                    <th>Default Permissions</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {roles.map(r => (
+                    <tr key={r.name}>
+                      <td style={{ fontWeight: 600 }}>{r.name}</td>
+                      <td style={{ fontSize: '0.8rem', maxWidth: '200px', wordBreak: 'break-word' }}>{r.description}</td>
+                      <td>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {r.default_permissions?.map(p => (
+                            <span key={p} className="badge badge-secondary" style={{ fontSize: '0.65rem' }}>
+                              {p.replace('_', ' ')}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '4px 8px', fontSize: '0.7rem', opacity: user?.role === 'System Administrator' ? 1 : 0.5, cursor: user?.role === 'System Administrator' ? 'pointer' : 'not-allowed' }}
+                            onClick={() => user?.role === 'System Administrator' ? handleSelectRoleForEdit(r) : null}
+                            disabled={user?.role !== 'System Administrator'}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="btn btn-danger" 
+                            style={{ padding: '4px 8px', fontSize: '0.7rem', opacity: user?.role === 'System Administrator' && r.name !== 'System Administrator' ? 1 : 0.5, cursor: user?.role === 'System Administrator' && r.name !== 'System Administrator' ? 'pointer' : 'not-allowed' }}
+                            onClick={() => user?.role === 'System Administrator' ? handleDeleteRole(r.name) : null}
+                            disabled={user?.role !== 'System Administrator' || r.name === 'System Administrator'}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Right Panel: Add/Edit Role Form */}
+          <div className="card" style={{ opacity: user?.role === 'System Administrator' ? 1 : 0.75 }}>
+            <h3>{isEditingRole ? 'Edit Role Structure' : 'Define New System Role'}</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--neutral-600)', marginBottom: '16px' }}>
+              {isEditingRole ? 'Modify description and default permissions for this role.' : 'Register a new role and establish its starting permission set.'}
+            </p>
+
+            <form onSubmit={user?.role === 'System Administrator' ? handleSaveRole : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Role Name</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. Monitoring Specialist"
+                  value={roleFormName}
+                  onChange={e => setRoleFormName(e.target.value)}
+                  required 
+                  disabled={user?.role !== 'System Administrator' || isEditingRole}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Description</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Brief scope summary..."
+                  value={roleFormDesc}
+                  onChange={e => setRoleFormDesc(e.target.value)}
+                  disabled={user?.role !== 'System Administrator'}
+                />
+              </div>
+
+              {/* Default Permissions Checkbox Grid */}
+              <div style={{ marginTop: '8px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '8px' }}>Default Permissions</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--neutral-100)', borderRadius: 'var(--radius-sm)' }}>
+                  
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: user?.role === 'System Administrator' ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={roleFormPermissions.includes('view_dashboard')}
+                      onChange={() => handleToggleRolePermission('view_dashboard')}
+                      disabled={user?.role !== 'System Administrator'}
+                    />
+                    <span>📊 View Dashboard & Performance KPIs</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: user?.role === 'System Administrator' ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={roleFormPermissions.includes('submit_data')}
+                      onChange={() => handleToggleRolePermission('submit_data')}
+                      disabled={user?.role !== 'System Administrator'}
+                    />
+                    <span>📝 Submit/Edit Actual Data Entries</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: user?.role === 'System Administrator' ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={roleFormPermissions.includes('verify_data')}
+                      onChange={() => handleToggleRolePermission('verify_data')}
+                      disabled={user?.role !== 'System Administrator'}
+                    />
+                    <span>🔍 Verify Submissions (Workflow Step 1)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: user?.role === 'System Administrator' ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={roleFormPermissions.includes('approve_data')}
+                      onChange={() => handleToggleRolePermission('approve_data')}
+                      disabled={user?.role !== 'System Administrator'}
+                    />
+                    <span>✅ Approve Submissions (Workflow Step 2)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: user?.role === 'System Administrator' ? 'pointer' : 'not-allowed' }}>
+                    <input 
+                      type="checkbox"
+                      checked={roleFormPermissions.includes('manage_settings')}
+                      onChange={() => handleToggleRolePermission('manage_settings')}
+                      disabled={user?.role !== 'System Administrator'}
+                    />
+                    <span>⚙️ Manage Settings & Structures</span>
+                  </label>
+
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={user?.role !== 'System Administrator'}>
+                  {isEditingRole ? 'Update Role' : 'Register Role'}
+                </button>
+                {isEditingRole && (
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={handleCancelEditRole}
+                    disabled={user?.role !== 'System Administrator'}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       )}
+    </div>
+  )}
 
       {/* 2. INDICATORS */}
       {activeTab === 'indicators' && (

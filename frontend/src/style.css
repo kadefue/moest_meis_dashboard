@@ -753,6 +753,35 @@ h3 {
   }
 }
 
+/* Toasts */
+.toast-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 300;
+}
+.toast {
+  min-width: 260px;
+  max-width: 360px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+.toast-message { flex: 1; font-size: 0.95rem; color: #fff; }
+.toast-info { background: linear-gradient(90deg, var(--primary), var(--primary-hover)); }
+.toast-success { background: linear-gradient(90deg, #43a047, #2e7d32); }
+.toast-warning { background: linear-gradient(90deg, #f59e0b, #d97706); }
+.toast-error { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+
 /* Login Screen layout */
 .login-container {
   min-height: 100vh;

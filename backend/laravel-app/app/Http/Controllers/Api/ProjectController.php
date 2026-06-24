@@ -12,6 +12,13 @@ class ProjectController extends Controller
 {
     protected function authorizeRole(Request $request): bool
     {
+        $username = $request->header('X-User-Username');
+        if ($username) {
+            $user = \App\Models\User::where('email', strtolower($username))->first();
+            if ($user && is_array($user->permissions)) {
+                return in_array('manage_settings', $user->permissions);
+            }
+        }
         $actorRole = $request->header('X-User-Role') ?: 'System Administrator';
         return in_array($actorRole, ['System Administrator', 'National M&E Officer']);
     }

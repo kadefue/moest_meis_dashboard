@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ActivityController;
 use App\Http\Controllers\Api\TargetController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\RoleController;
 
 /*
 |--------------------------------------------------------------------------
@@ -122,4 +124,18 @@ Route::middleware('api')->group(function () {
 
     // Reports compilations
     Route::get('/reports', [ReportController::class, 'generate']);
+
+    // Auth & User Management CRUD
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::get('/users', [AuthController::class, 'index']);
+    Route::put('/users/{id}', [AuthController::class, 'update']);
+    Route::delete('/users/{id}', [AuthController::class, 'destroy']);
+
+    // Role Setup CRUD
+    Route::get('/roles', [RoleController::class, 'index']);
+    Route::post('/roles', [RoleController::class, 'store']);
+    Route::get('/roles/{id}', [RoleController::class, 'show']);
+    Route::put('/roles/{id}', [RoleController::class, 'update']);
+    Route::delete('/roles/{id}', [RoleController::class, 'destroy']);
 });

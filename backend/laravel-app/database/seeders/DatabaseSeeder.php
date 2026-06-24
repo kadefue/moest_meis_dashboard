@@ -14,11 +14,112 @@ use App\Models\IndicatorMetadata;
 use App\Models\Target;
 use App\Models\ActualData;
 use App\Models\AuditLog;
+use App\Models\User;
+use App\Models\Role;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // 0.0 Seed Roles
+        Role::create([
+            'name' => 'System Administrator',
+            'description' => 'Full access to M&E dashboard, metadata registries, settings, user scopes, and audit trails.',
+            'default_permissions' => ['view_dashboard', 'submit_data', 'verify_data', 'approve_data', 'manage_settings'],
+            'created_by' => 'system'
+        ]);
+
+        Role::create([
+            'name' => 'MoEST Leadership',
+            'description' => 'Read-only access to strategic performance indicators and approval authorization for verified metrics.',
+            'default_permissions' => ['view_dashboard', 'approve_data'],
+            'created_by' => 'system'
+        ]);
+
+        Role::create([
+            'name' => 'National M&E Officer',
+            'description' => 'Manages indicator registry parameters, creates frameworks, and verifies submissions.',
+            'default_permissions' => ['view_dashboard', 'submit_data', 'verify_data', 'manage_settings'],
+            'created_by' => 'system'
+        ]);
+
+        Role::create([
+            'name' => 'Regional M&E Officer',
+            'description' => 'Submits actual metrics for the region and performs first-level verification checks.',
+            'default_permissions' => ['view_dashboard', 'submit_data', 'verify_data'],
+            'created_by' => 'system'
+        ]);
+
+        Role::create([
+            'name' => 'District Education Officer',
+            'description' => 'Enters performance actuals for district-level primary and secondary indicators.',
+            'default_permissions' => ['view_dashboard', 'submit_data'],
+            'created_by' => 'system'
+        ]);
+
+        Role::create([
+            'name' => 'School Data Entry Officer',
+            'description' => 'Submits census and operational indicators directly from primary/secondary schools.',
+            'default_permissions' => ['view_dashboard', 'submit_data'],
+            'created_by' => 'system'
+        ]);
+
+        // 0. Seed Users
+        User::create([
+            'name' => 'Hamis Juma',
+            'email' => 'admin@moe.go.tz',
+            'password' => Hash::make('password123'),
+            'role' => 'System Administrator',
+            'dept' => 'ICT Unit',
+            'permissions' => ['view_dashboard', 'submit_data', 'verify_data', 'approve_data', 'manage_settings']
+        ]);
+
+        User::create([
+            'name' => 'Dr. Leonard Akwilapo',
+            'email' => 'executive@moe.go.tz',
+            'password' => Hash::make('password123'),
+            'role' => 'MoEST Leadership',
+            'dept' => 'Permanent Secretary Office',
+            'permissions' => ['view_dashboard', 'approve_data']
+        ]);
+
+        User::create([
+            'name' => 'Neema Temu',
+            'email' => 'evaluator.national@moe.go.tz',
+            'password' => Hash::make('password123'),
+            'role' => 'National M&E Officer',
+            'dept' => 'M&E Section',
+            'permissions' => ['view_dashboard', 'submit_data', 'verify_data', 'manage_settings']
+        ]);
+
+        User::create([
+            'name' => 'Said Mwinyi',
+            'email' => 'reo.dodoma@moe.go.tz',
+            'password' => Hash::make('password123'),
+            'role' => 'Regional M&E Officer',
+            'dept' => 'Dodoma Regional Office',
+            'permissions' => ['view_dashboard', 'submit_data', 'verify_data']
+        ]);
+
+        User::create([
+            'name' => 'Mary Chisunga',
+            'email' => 'deo.dodoma@moe.go.tz',
+            'password' => Hash::make('password123'),
+            'role' => 'District Education Officer',
+            'dept' => 'Bahi District Council',
+            'permissions' => ['view_dashboard', 'submit_data']
+        ]);
+
+        User::create([
+            'name' => 'Peter Temba',
+            'email' => 'school.entry@moe.go.tz',
+            'password' => Hash::make('password123'),
+            'role' => 'School Data Entry Officer',
+            'dept' => 'Bahi Primary School',
+            'permissions' => ['view_dashboard', 'submit_data']
+        ]);
+
         // 1. Seed Projects
         Project::create([
             'project_id' => 'PRJ-001',
