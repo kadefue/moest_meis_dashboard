@@ -6,6 +6,42 @@ import Modal from '../components/Modal';
 import { useToast } from '../components/ToastProvider';
 import { useConfirm } from '../components/ConfirmProvider';
 
+const generateNextId = (prefix, items, idKey) => {
+  if (!items || items.length === 0) return `${prefix}-001`;
+  const maxNum = items.reduce((max, item) => {
+    const val = item[idKey];
+    if (!val) return max;
+    const parts = val.split('-');
+    if (parts.length === 2 && !isNaN(parts[1])) {
+      return Math.max(max, parseInt(parts[1], 10));
+    }
+    return max;
+  }, 0);
+  return `${prefix}-${String(maxNum + 1).padStart(3, '0')}`;
+};
+
+const getHierarchicalNodes = (nodes) => {
+  const buildTree = (parentId, depth) => {
+    const children = nodes.filter(n => n.parent_node_id === parentId);
+    let result = [];
+    for (const child of children) {
+      result.push({ ...child, _depth: depth });
+      result = result.concat(buildTree(child.node_id, depth + 1));
+    }
+    return result;
+  };
+  
+  const nodeIds = new Set(nodes.map(n => n.node_id));
+  const rootNodes = nodes.filter(n => !n.parent_node_id || !nodeIds.has(n.parent_node_id));
+  
+  let hierarchicalList = [];
+  for (const root of rootNodes) {
+    hierarchicalList.push({ ...root, _depth: 0 });
+    hierarchicalList = hierarchicalList.concat(buildTree(root.node_id, 1));
+  }
+  return hierarchicalList;
+};
+
 export default function AdminScreen({ user }) {
   const [activeTab, setActiveTab] = useState('users');
   
@@ -23,12 +59,22 @@ export default function AdminScreen({ user }) {
   const [projectNodes, setProjectNodes] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
 
+  // Activities States
+  const [activities, setActivities] = useState([]);
+  const [newActivityName, setNewActivityName] = useState('');
+  const [newActivityDesc, setNewActivityDesc] = useState('');
+  const [newActivityStartDate, setNewActivityStartDate] = useState('');
+  const [newActivityEndDate, setNewActivityEndDate] = useState('');
+  const [newActivityBudget, setNewActivityBudget] = useState('');
+  const [newActivityUnit, setNewActivityUnit] = useState('');
+  const [newActivityPerson, setNewActivityPerson] = useState('');
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [newActivityIndicators, setNewActivityIndicators] = useState([]);
+
   // Geography States
   const [regions, setRegions] = useState([]);
   const [districts, setDistricts] = useState([]);
-  const [newRegId, setNewRegId] = useState('');
   const [newRegName, setNewRegName] = useState('');
-  const [newDistId, setNewDistId] = useState('');
   const [newDistRegId, setNewDistRegId] = useState('');
   const [newDistName, setNewDistName] = useState('');
 
@@ -36,15 +82,12 @@ export default function AdminScreen({ user }) {
   const [institutions, setInstitutions] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [sections, setSections] = useState([]);
-  const [newInstId, setNewInstId] = useState('');
   const [newInstName, setNewInstName] = useState('');
   const [newInstType, setNewInstType] = useState('Ministry');
   const [newInstRegId, setNewInstRegId] = useState('');
   const [newInstDistId, setNewInstDistId] = useState('');
-  const [newDeptId, setNewDeptId] = useState('');
   const [newDeptInstId, setNewDeptInstId] = useState('');
   const [newDeptName, setNewDeptName] = useState('');
-  const [newSecId, setNewSecId] = useState('');
   const [newSecDeptId, setNewSecDeptId] = useState('');
   const [newSecName, setNewSecName] = useState('');
 
@@ -79,15 +122,18 @@ export default function AdminScreen({ user }) {
   const [indFormType, setIndFormType] = useState('Output');
   const [indFormIsDerived, setIndFormIsDerived] = useState(false);
   const [indFormFormula, setIndFormFormula] = useState('');
+  const [indFormUnit, setIndFormUnit] = useState('Percentage (%)');
+  const [indFormFrequency, setIndFormFrequency] = useState('Annually');
+  const [indFormDataSource, setIndFormDataSource] = useState('');
+  const [indFormVerificationMeans, setIndFormVerificationMeans] = useState('');
+  const [indFormResponsibleUnit, setIndFormResponsibleUnit] = useState('');
   
-  // Framework Form State
-  const [newFwId, setNewFwId] = useState('');
+  // Framework Setup Form States
   const [newFwName, setNewFwName] = useState('');
   const [newFwStartYear, setNewFwStartYear] = useState('2026');
   const [newFwEndYear, setNewFwEndYear] = useState('2031');
 
   // Node Form State
-  const [newNodeId, setNewNodeId] = useState('');
   const [newNodeFwId, setNewNodeFwId] = useState('');
   const [newNodeParentId, setNewNodeParentId] = useState('');
   const [newNodeLevelType, setNewNodeLevelType] = useState('Focus Area');
@@ -95,14 +141,12 @@ export default function AdminScreen({ user }) {
   const [newNodeIndicatorId, setNewNodeIndicatorId] = useState('');
   const [levelTypes, setLevelTypes] = useState(['Sub-sector', 'Focus Area', 'Strategy', 'Target / Objective']);
 
-  // Project Form State
-  const [newPrjId, setNewPrjId] = useState('');
+  // Project Setup Form States
   const [newPrjName, setNewPrjName] = useState('');
   const [newPrjStartYear, setNewPrjStartYear] = useState('2026');
   const [newPrjEndYear, setNewPrjEndYear] = useState('2031');
 
   // Project Node Form State
-  const [newPrjNodeId, setNewPrjNodeId] = useState('');
   const [newPrjNodeProjectId, setNewPrjNodeProjectId] = useState('');
   const [newPrjNodeParentId, setNewPrjNodeParentId] = useState('');
   const [newPrjNodeLevelType, setNewPrjNodeLevelType] = useState('Component');
@@ -146,6 +190,9 @@ export default function AdminScreen({ user }) {
       setSelectedProjectId(prjs[0].project_id);
       setNewPrjNodeProjectId(prjs[0].project_id);
     }
+    
+    // Load activities
+    setActivities(getTable('activities'));
     
     const savedTypes = localStorage.getItem('me_level_types');
     if (savedTypes) {
@@ -454,15 +501,15 @@ export default function AdminScreen({ user }) {
 
   const handleCreateRegion = (e) => {
     e.preventDefault();
-    if (!newRegId || !newRegName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    if (!newRegName) return addToast({ message: 'Please fill all fields', type: 'warning' });
     const current = getTable('regions');
-    if (current.some(r => r.region_id.toLowerCase() === newRegId.toLowerCase())) return addToast({ message: 'Region ID exists', type: 'warning' });
-    const newEntry = { region_id: newRegId.toUpperCase(), name: newRegName };
+    const generatedId = generateNextId('REG', current, 'region_id');
+    const newEntry = { region_id: generatedId, name: newRegName };
     const updated = [...current, newEntry];
     saveTable('regions', updated);
     setRegions(updated);
     logAction(user.username, 'CREATE', 'Geography', `Added region: ${newRegName}`);
-    setNewRegId(''); setNewRegName('');
+    setNewRegName('');
     addToast({ message: 'Region created', type: 'success' });
   };
 
@@ -482,15 +529,15 @@ export default function AdminScreen({ user }) {
 
   const handleCreateDistrict = (e) => {
     e.preventDefault();
-    if (!newDistId || !newDistRegId || !newDistName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    if (!newDistRegId || !newDistName) return addToast({ message: 'Please fill all fields', type: 'warning' });
     const current = getTable('districts');
-    if (current.some(d => d.district_id.toLowerCase() === newDistId.toLowerCase())) return addToast({ message: 'District ID exists', type: 'warning' });
-    const newEntry = { district_id: newDistId.toUpperCase(), region_id: newDistRegId, name: newDistName };
+    const generatedId = generateNextId('DIS', current, 'district_id');
+    const newEntry = { district_id: generatedId, region_id: newDistRegId, name: newDistName };
     const updated = [...current, newEntry];
     saveTable('districts', updated);
     setDistricts(updated);
     logAction(user.username, 'CREATE', 'Geography', `Added district: ${newDistName}`);
-    setNewDistId(''); setNewDistName(''); setNewDistRegId('');
+    setNewDistName(''); setNewDistRegId('');
     addToast({ message: 'District created', type: 'success' });
   };
 
@@ -509,11 +556,11 @@ export default function AdminScreen({ user }) {
 
   const handleCreateInstitution = (e) => {
     e.preventDefault();
-    if (!newInstId || !newInstName || !newInstType) return addToast({ message: 'Please fill all required fields', type: 'warning' });
+    if (!newInstName || !newInstType) return addToast({ message: 'Please fill all required fields', type: 'warning' });
     const current = getTable('institutions');
-    if (current.some(i => i.inst_id.toLowerCase() === newInstId.toLowerCase())) return addToast({ message: 'Institution ID exists', type: 'warning' });
+    const generatedId = generateNextId('INS', current, 'inst_id');
     const newEntry = { 
-      inst_id: newInstId.toUpperCase(), 
+      inst_id: generatedId, 
       name: newInstName, 
       type: newInstType, 
       region_id: newInstRegId || null, 
@@ -523,7 +570,7 @@ export default function AdminScreen({ user }) {
     saveTable('institutions', updated);
     setInstitutions(updated);
     logAction(user.username, 'CREATE', 'Organization', `Added institution: ${newInstName}`);
-    setNewInstId(''); setNewInstName(''); setNewInstRegId(''); setNewInstDistId('');
+    setNewInstName(''); setNewInstRegId(''); setNewInstDistId('');
     addToast({ message: 'Institution created', type: 'success' });
   };
 
@@ -543,15 +590,15 @@ export default function AdminScreen({ user }) {
 
   const handleCreateDepartment = (e) => {
     e.preventDefault();
-    if (!newDeptId || !newDeptInstId || !newDeptName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    if (!newDeptInstId || !newDeptName) return addToast({ message: 'Please fill all fields', type: 'warning' });
     const current = getTable('departments');
-    if (current.some(d => d.dept_id.toLowerCase() === newDeptId.toLowerCase())) return addToast({ message: 'Department ID exists', type: 'warning' });
-    const newEntry = { dept_id: newDeptId.toUpperCase(), inst_id: newDeptInstId, name: newDeptName };
+    const generatedId = generateNextId('DEP', current, 'dept_id');
+    const newEntry = { dept_id: generatedId, inst_id: newDeptInstId, name: newDeptName };
     const updated = [...current, newEntry];
     saveTable('departments', updated);
     setDepartments(updated);
     logAction(user.username, 'CREATE', 'Organization', `Added department: ${newDeptName}`);
-    setNewDeptId(''); setNewDeptName(''); setNewDeptInstId('');
+    setNewDeptName(''); setNewDeptInstId('');
     addToast({ message: 'Department created', type: 'success' });
   };
 
@@ -571,15 +618,15 @@ export default function AdminScreen({ user }) {
 
   const handleCreateSection = (e) => {
     e.preventDefault();
-    if (!newSecId || !newSecDeptId || !newSecName) return addToast({ message: 'Please fill all fields', type: 'warning' });
+    if (!newSecDeptId || !newSecName) return addToast({ message: 'Please fill all fields', type: 'warning' });
     const current = getTable('sections');
-    if (current.some(s => s.section_id.toLowerCase() === newSecId.toLowerCase())) return addToast({ message: 'Section ID exists', type: 'warning' });
-    const newEntry = { section_id: newSecId.toUpperCase(), dept_id: newSecDeptId, name: newSecName };
+    const generatedId = generateNextId('SEC', current, 'section_id');
+    const newEntry = { section_id: generatedId, dept_id: newSecDeptId, name: newSecName };
     const updated = [...current, newEntry];
     saveTable('sections', updated);
     setSections(updated);
     logAction(user.username, 'CREATE', 'Organization', `Added section: ${newSecName}`);
-    setNewSecId(''); setNewSecName(''); setNewSecDeptId('');
+    setNewSecName(''); setNewSecDeptId('');
     addToast({ message: 'Section created', type: 'success' });
   };
 
@@ -598,19 +645,16 @@ export default function AdminScreen({ user }) {
 
   const handleCreateFramework = (e) => {
     e.preventDefault();
-    if (!newFwId || !newFwName || !newFwStartYear || !newFwEndYear) {
+    if (!newFwName || !newFwStartYear || !newFwEndYear) {
       addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentFws = getTable('frameworks');
-    if (currentFws.some(f => f.framework_id.toLowerCase() === newFwId.toLowerCase())) {
-      addToast({ message: 'Framework ID already exists!', type: 'warning' });
-      return;
-    }
+    const generatedId = generateNextId('FW', currentFws, 'framework_id');
 
     const newFw = {
-      framework_id: newFwId.toUpperCase(),
+      framework_id: generatedId,
       name: newFwName,
       start_year: parseInt(newFwStartYear),
       end_year: parseInt(newFwEndYear)
@@ -623,26 +667,22 @@ export default function AdminScreen({ user }) {
     logAction(user.username, 'CREATE', 'Framework', `Defined new strategic framework: ${newFw.name} (${newFw.framework_id})`);
 
     // Reset Form
-    setNewFwId('');
     setNewFwName('');
     addToast({ message: 'Strategic Framework defined successfully in portal registry.', type: 'success' });
   };
 
   const handleCreateNode = (e) => {
     e.preventDefault();
-    if (!newNodeId || !newNodeFwId || !newNodeLevelType || !newNodeName) {
+    if (!newNodeFwId || !newNodeLevelType || !newNodeName) {
       addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentNodes = getTable('nodes');
-    if (currentNodes.some(n => n.node_id.toLowerCase() === newNodeId.toLowerCase())) {
-      addToast({ message: 'Node ID already exists!', type: 'warning' });
-      return;
-    }
+    const generatedId = generateNextId('N', currentNodes, 'node_id');
 
     const newNode = {
-      node_id: newNodeId.toUpperCase(),
+      node_id: generatedId,
       framework_id: newNodeFwId,
       parent_node_id: newNodeParentId || null,
       level_type: newNodeLevelType,
@@ -670,7 +710,6 @@ export default function AdminScreen({ user }) {
     logAction(user.username, 'CREATE', 'Framework Node', `Added node ${newNode.node_id} (${newNode.name}) under framework ${newNode.framework_id}`);
 
     // Reset Form
-    setNewNodeId('');
     setNewNodeName('');
     setNewNodeParentId('');
     setNewNodeIndicatorId('');
@@ -679,19 +718,16 @@ export default function AdminScreen({ user }) {
 
   const handleCreateProject = (e) => {
     e.preventDefault();
-    if (!newPrjId || !newPrjName || !newPrjStartYear || !newPrjEndYear) {
+    if (!newPrjName || !newPrjStartYear || !newPrjEndYear) {
       addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentPrjs = getTable('projects');
-    if (currentPrjs.some(p => p.project_id.toLowerCase() === newPrjId.toLowerCase())) {
-      addToast({ message: 'Project ID already exists!', type: 'warning' });
-      return;
-    }
+    const generatedId = generateNextId('PRJ', currentPrjs, 'project_id');
 
     const newPrj = {
-      project_id: newPrjId.toUpperCase(),
+      project_id: generatedId,
       name: newPrjName,
       start_year: parseInt(newPrjStartYear),
       end_year: parseInt(newPrjEndYear)
@@ -704,26 +740,22 @@ export default function AdminScreen({ user }) {
     logAction(user.username, 'CREATE', 'Project', `Defined new project: ${newPrj.name} (${newPrj.project_id})`);
 
     // Reset Form
-    setNewPrjId('');
     setNewPrjName('');
     addToast({ message: 'Project defined successfully in portal registry.', type: 'success' });
   };
 
   const handleCreateProjectNode = (e) => {
     e.preventDefault();
-    if (!newPrjNodeId || !newPrjNodeProjectId || !newPrjNodeLevelType || !newPrjNodeName) {
+    if (!newPrjNodeProjectId || !newPrjNodeLevelType || !newPrjNodeName) {
       addToast({ message: 'Please fill all fields', type: 'warning' });
       return;
     }
 
     const currentNodes = getTable('project_nodes');
-    if (currentNodes.some(n => n.node_id.toLowerCase() === newPrjNodeId.toLowerCase())) {
-      addToast({ message: 'Node ID already exists!', type: 'warning' });
-      return;
-    }
+    const generatedId = generateNextId('PN', currentNodes, 'node_id');
 
     const newNode = {
-      node_id: newPrjNodeId.toUpperCase(),
+      node_id: generatedId,
       project_id: newPrjNodeProjectId,
       parent_node_id: newPrjNodeParentId || null,
       level_type: newPrjNodeLevelType,
@@ -734,7 +766,7 @@ export default function AdminScreen({ user }) {
     saveTable('project_nodes', updated);
     setProjectNodes(updated);
 
-    // Update indicator link if specified
+    // Link indicator if selected
     if (newPrjNodeIndicatorId) {
       const currentIndicators = getTable('indicators');
       const updatedInds = currentIndicators.map(ind => {
@@ -745,17 +777,77 @@ export default function AdminScreen({ user }) {
       });
       saveTable('indicators', updatedInds);
       setIndicators(updatedInds);
-      logAction(user.username, 'UPDATE', 'Indicator Link', `Linked KPI indicator ${newPrjNodeIndicatorId} to project node ${newNode.node_id}`);
+      logAction(user.username, 'UPDATE', 'Indicator Link', `Linked KPI indicator ${newPrjNodeIndicatorId} to project activity ${newNode.node_id}`);
     }
 
-    logAction(user.username, 'CREATE', 'Project Node', `Added node ${newNode.node_id} (${newNode.name}) under project ${newNode.project_id}`);
+    logAction(user.username, 'CREATE', 'Project Node', `Added activity ${newNode.node_id} (${newNode.name}) under project ${newNode.project_id}`);
 
     // Reset Form
-    setNewPrjNodeId('');
     setNewPrjNodeName('');
     setNewPrjNodeParentId('');
     setNewPrjNodeIndicatorId('');
-    addToast({ message: 'Project Node successfully attached to results chain.', type: 'success' });
+    addToast({ message: 'Project Activity successfully created.', type: 'success' });
+  };
+
+  const handleCreateActivity = (e) => {
+    e.preventDefault();
+    if (!newActivityName || !newActivityStartDate || !newActivityEndDate || !newActivityUnit) {
+      return addToast({ message: 'Please fill all required fields', type: 'warning' });
+    }
+    const current = getTable('activities');
+    const generatedId = generateNextId('ACT', current, 'activity_id');
+    const newEntry = {
+      activity_id: generatedId,
+      name: newActivityName,
+      description: newActivityDesc,
+      start_date: newActivityStartDate,
+      end_date: newActivityEndDate,
+      budget: parseFloat(newActivityBudget) || 0,
+      owner_unit: newActivityUnit, // Now this will be the unit ID
+      responsible_person: newActivityPerson || null
+    };
+    const updated = [...current, newEntry];
+    saveTable('activities', updated);
+    setActivities(updated);
+
+    // Update mapped indicators
+    if (newActivityIndicators.length > 0) {
+      const currentIndicators = getTable('indicators');
+      const updatedIndicators = currentIndicators.map(ind => {
+        if (newActivityIndicators.includes(ind.indicator_id)) {
+          return { ...ind, associated_activity_id: generatedId };
+        }
+        return ind;
+      });
+      saveTable('indicators', updatedIndicators);
+      setIndicators(updatedIndicators);
+    }
+
+    logAction(user.username, 'CREATE', 'Activity', `Added activity: ${newActivityName}`);
+    
+    setNewActivityName('');
+    setNewActivityDesc('');
+    setNewActivityStartDate('');
+    setNewActivityEndDate('');
+    setNewActivityBudget('');
+    setNewActivityUnit('');
+    setNewActivityPerson('');
+    setNewActivityIndicators([]);
+    setShowActivityModal(false);
+    addToast({ message: 'Activity created', type: 'success' });
+  };
+
+  const handleDeleteActivity = (id) => {
+    if (!isAuthorized) return addToast({ message: 'Permission Error', type: 'warning' });
+    (async () => {
+      const ok = await showConfirm({ title: 'Delete Activity', message: 'Are you sure you want to delete this activity?' });
+      if (!ok) return;
+      const updated = activities.filter(a => a.activity_id !== id);
+      saveTable('activities', updated);
+      setActivities(updated);
+      logAction(user.username, 'DELETE', 'Activity', `Deleted activity: ${id}`);
+      addToast({ message: 'Activity deleted', type: 'success' });
+    })();
   };
 
   const handleDeleteFramework = (fwId) => {
@@ -911,16 +1003,34 @@ export default function AdminScreen({ user }) {
     setIndFormType(ind.type);
     setIndFormIsDerived(!!ind.is_derived);
     setIndFormFormula(ind.formula || '');
+
+    // Fetch metadata
+    const meta = getTable('metadata').find(m => m.indicator_id === ind.indicator_id);
+    setIndFormUnit(meta?.unit || 'Percentage (%)');
+    setIndFormFrequency(meta?.frequency || 'Annually');
+    setIndFormDataSource(meta?.data_source || '');
+    setIndFormVerificationMeans(meta?.verification_means || '');
+    setIndFormResponsibleUnit(meta?.responsible_unit || '');
+
     setShowIndicatorModal(true);
   };
 
   const handleAddIndicatorClick = () => {
     setIsEditingIndicator(false);
-    setIndFormId(`IND-${String(indicators.length + 1).padStart(3, '0')}`);
+    const generatedId = generateNextId('IND', indicators, 'indicator_id');
+    setIndFormId(generatedId);
     setIndFormName('');
     setIndFormType('Output');
     setIndFormIsDerived(false);
     setIndFormFormula('');
+
+    // Clear metadata states
+    setIndFormUnit('Percentage (%)');
+    setIndFormFrequency('Annually');
+    setIndFormDataSource('');
+    setIndFormVerificationMeans('');
+    setIndFormResponsibleUnit('');
+
     setShowIndicatorModal(true);
   };
 
@@ -936,6 +1046,16 @@ export default function AdminScreen({ user }) {
     }
     
     const currentInds = getTable('indicators');
+    const currentMeta = getTable('metadata');
+    const newMetaRecord = {
+      indicator_id: indFormId,
+      unit: indFormUnit,
+      frequency: indFormFrequency,
+      data_source: indFormDataSource,
+      verification_means: indFormVerificationMeans,
+      responsible_unit: indFormResponsibleUnit
+    };
+
     if (isEditingIndicator) {
       const updated = currentInds.map(i => {
         if (i.indicator_id === indFormId) {
@@ -951,6 +1071,13 @@ export default function AdminScreen({ user }) {
       });
       saveTable('indicators', updated);
       setIndicators(updated);
+
+      // update metadata
+      const updatedMeta = currentMeta.some(m => m.indicator_id === indFormId)
+        ? currentMeta.map(m => m.indicator_id === indFormId ? newMetaRecord : m)
+        : [...currentMeta, newMetaRecord];
+      saveTable('metadata', updatedMeta);
+
       logAction(user.username, 'UPDATE', 'Indicator', `Updated indicator ${indFormId}`);
       addToast({ message: 'Indicator updated successfully', type: 'success' });
     } else {
@@ -971,6 +1098,10 @@ export default function AdminScreen({ user }) {
       const updated = [...currentInds, newInd];
       saveTable('indicators', updated);
       setIndicators(updated);
+
+      // create metadata
+      saveTable('metadata', [...currentMeta, newMetaRecord]);
+
       logAction(user.username, 'CREATE', 'Indicator', `Created new indicator ${indFormId}`);
       addToast({ message: 'Indicator created successfully', type: 'success' });
     }
@@ -1072,6 +1203,20 @@ export default function AdminScreen({ user }) {
           onClick={() => setActiveTab('projects')}
         >
           📂 Project Setup
+        </button>
+        <button 
+          className="btn" 
+          style={{ 
+            borderRadius: '0', 
+            background: 'transparent', 
+            color: activeTab === 'activities' ? 'var(--primary)' : 'var(--neutral-600)',
+            borderBottom: activeTab === 'activities' ? '3px solid var(--primary)' : '3px solid transparent',
+            fontWeight: 600,
+            padding: '12px 20px'
+          }} 
+          onClick={() => setActiveTab('activities')}
+        >
+          🚀 Activities
         </button>
         <button 
           className="btn" 
@@ -1517,20 +1662,7 @@ export default function AdminScreen({ user }) {
               </form>
             </Modal>
           )}
-          {showLevelTypeModal && (
-            <Modal title="Add Level Type" onClose={() => setShowLevelTypeModal(false)} footer={null}>
-              <form onSubmit={handleSaveLevelType} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Level Type Name</label>
-                  <input type="text" className="form-control" placeholder="e.g. Sub-Programme" value={levelTypeInput} onChange={e => setLevelTypeInput(e.target.value)} />
-                </div>
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowLevelTypeModal(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Save</button>
-                </div>
-              </form>
-            </Modal>
-          )}
+
         </div>
       )}
 
@@ -1813,10 +1945,7 @@ export default function AdminScreen({ user }) {
           {showIndicatorModal && (
             <Modal title={isEditingIndicator ? 'Edit KPI Indicator' : 'Register New KPI'} onClose={() => setShowIndicatorModal(false)} footer={null}>
               <form onSubmit={handleSaveIndicator} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Indicator ID</label>
-                  <input type="text" className="form-control" value={indFormId} onChange={e => setIndFormId(e.target.value)} required disabled={isEditingIndicator} />
-                </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Indicator Name</label>
                   <input type="text" className="form-control" value={indFormName} onChange={e => setIndFormName(e.target.value)} required />
@@ -1934,6 +2063,86 @@ export default function AdminScreen({ user }) {
         </div>
       )}
 
+      {/* ACTIVITIES SETUP */}
+      {activeTab === 'activities' && (
+        <div style={{ display: 'flex', gap: '24px', width: '100%', flexDirection: 'column' }}>
+          {!isAuthorized && (
+            <div style={{ padding: '16px', background: 'var(--warning)', color: '#fff', borderRadius: 'var(--radius-md)', fontWeight: 600 }}>
+              Viewing Mode: You do not have permission to manage activities.
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+            {/* Left Panel: List of Activities */}
+            <div className="card" style={{ flex: 2, minWidth: '400px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h3>Activities Register</h3>
+                <div>
+                  <span className="badge badge-primary" style={{ marginRight: '16px' }}>{activities.length} Activities</span>
+                  {isAuthorized && (
+                    <button className="btn btn-primary" onClick={() => setShowActivityModal(true)}>➕ Add Activity</button>
+                  )}
+                </div>
+              </div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Activity Name</th>
+                      <th>Duration</th>
+                      <th>Budget (TZS)</th>
+                      <th>Resp. Unit</th>
+                      <th>Resp. Person</th>
+                      {isAuthorized && <th>Action</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activities.map(act => {
+                      const respPerson = users.find(u => u.user_id === act.responsible_person);
+                      return (
+                        <tr key={act.activity_id}>
+                          <td><strong>{act.activity_id}</strong></td>
+                          <td>
+                            <div style={{ fontWeight: 600, color: 'var(--neutral-900)' }}>{act.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--neutral-600)', marginTop: '4px' }}>{act.description}</div>
+                          </td>
+                          <td>
+                            <div style={{ fontSize: '0.8rem' }}>{act.start_date} to</div>
+                            <div style={{ fontSize: '0.8rem' }}>{act.end_date}</div>
+                          </td>
+                          <td>{new Intl.NumberFormat('en-TZ').format(act.budget || 0)}</td>
+                          <td><span className="badge badge-info">{act.owner_unit || 'N/A'}</span></td>
+                          <td>{respPerson ? respPerson.name : (act.responsible_person || 'N/A')}</td>
+                          {isAuthorized && (
+                            <td>
+                              <button 
+                                className="btn" 
+                                style={{ padding: '4px 8px', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}
+                                onClick={() => handleDeleteActivity(act.activity_id)}
+                              >
+                                🗑️ Delete
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {activities.length === 0 && (
+                      <tr>
+                        <td colSpan={isAuthorized ? 7 : 6} style={{ textAlign: 'center', padding: '32px', color: 'var(--neutral-500)' }}>
+                          No activities registered yet.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* GEOGRAPHY SETUP */}
       {activeTab === 'geography' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
@@ -1947,7 +2156,6 @@ export default function AdminScreen({ user }) {
               <h3>Regions</h3>
               {isAuthorized && (
                 <form onSubmit={handleCreateRegion} style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-                  <input className="form-control" placeholder="Region ID (e.g. REG-001)" value={newRegId} onChange={e => setNewRegId(e.target.value)} required />
                   <input className="form-control" placeholder="Region Name" value={newRegName} onChange={e => setNewRegName(e.target.value)} required />
                   <button type="submit" className="btn btn-primary">Add Region</button>
                 </form>
@@ -1979,7 +2187,6 @@ export default function AdminScreen({ user }) {
               <h3>Districts</h3>
               {isAuthorized && (
                 <form onSubmit={handleCreateDistrict} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                  <input className="form-control" style={{ flex: '1 1 45%' }} placeholder="District ID (e.g. DIST-001)" value={newDistId} onChange={e => setNewDistId(e.target.value)} required />
                   <select className="form-control" style={{ flex: '1 1 45%' }} value={newDistRegId} onChange={e => setNewDistRegId(e.target.value)} required>
                     <option value="">Select Region...</option>
                     {regions.map(r => <option key={r.region_id} value={r.region_id}>{r.name}</option>)}
@@ -2031,7 +2238,6 @@ export default function AdminScreen({ user }) {
             <h3>Institutions</h3>
             {isAuthorized && (
               <form onSubmit={handleCreateInstitution} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                <input className="form-control" style={{ flex: '1 1 200px' }} placeholder="Inst ID (e.g. INST-001)" value={newInstId} onChange={e => setNewInstId(e.target.value)} required />
                 <input className="form-control" style={{ flex: '1 1 200px' }} placeholder="Institution Name" value={newInstName} onChange={e => setNewInstName(e.target.value)} required />
                 <select className="form-control" style={{ flex: '1 1 200px' }} value={newInstType} onChange={e => setNewInstType(e.target.value)}>
                   <option value="Ministry">Ministry</option>
@@ -2070,7 +2276,6 @@ export default function AdminScreen({ user }) {
               <h3>Departments</h3>
               {isAuthorized && (
                 <form onSubmit={handleCreateDepartment} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                  <input className="form-control" style={{ flex: '1 1 45%' }} placeholder="Dept ID (e.g. DEPT-001)" value={newDeptId} onChange={e => setNewDeptId(e.target.value)} required />
                   <select className="form-control" style={{ flex: '1 1 45%' }} value={newDeptInstId} onChange={e => setNewDeptInstId(e.target.value)} required>
                     <option value="">Select Institution...</option>
                     {institutions.map(i => <option key={i.inst_id} value={i.inst_id}>{i.name}</option>)}
@@ -2110,7 +2315,6 @@ export default function AdminScreen({ user }) {
               <h3>Sections</h3>
               {isAuthorized && (
                 <form onSubmit={handleCreateSection} style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
-                  <input className="form-control" style={{ flex: '1 1 45%' }} placeholder="Sec ID (e.g. SEC-001)" value={newSecId} onChange={e => setNewSecId(e.target.value)} required />
                   <select className="form-control" style={{ flex: '1 1 45%' }} value={newSecDeptId} onChange={e => setNewSecDeptId(e.target.value)} required>
                     <option value="">Select Department...</option>
                     {departments.map(d => <option key={d.dept_id} value={d.dept_id}>{d.name}</option>)}
@@ -2249,7 +2453,7 @@ export default function AdminScreen({ user }) {
                       No nodes defined for this framework yet.
                     </div>
                   ) : (
-                    nodes.filter(n => n.framework_id === selectedFrameworkId).map(node => (
+                    getHierarchicalNodes(nodes.filter(n => n.framework_id === selectedFrameworkId)).map(node => (
                       <div 
                         key={node.node_id} 
                         style={{ 
@@ -2261,9 +2465,19 @@ export default function AdminScreen({ user }) {
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center',
-                          marginLeft: node.parent_node_id ? '20px' : '0px'
+                          marginLeft: `${node._depth * 24}px`,
+                          position: 'relative'
                         }}
                       >
+                        {node._depth > 0 && (
+                          <div style={{
+                            position: 'absolute',
+                            left: '-16px',
+                            top: '50%',
+                            width: '12px',
+                            borderTop: '2px solid var(--neutral-300)',
+                          }} />
+                        )}
                         <div>
                           <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{node.name}</div>
                           <div style={{ fontSize: '0.7rem', color: 'var(--neutral-600)', marginTop: '2px' }}>
@@ -2302,18 +2516,6 @@ export default function AdminScreen({ user }) {
               
               <form onSubmit={isAuthorized ? handleCreateFramework : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Framework ID</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="e.g. FW-004" 
-                      value={newFwId}
-                      onChange={e => setNewFwId(e.target.value)}
-                      required 
-                      disabled={!isAuthorized}
-                    />
-                  </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Start Year</label>
                     <input 
@@ -2373,18 +2575,6 @@ export default function AdminScreen({ user }) {
               
               <form onSubmit={isAuthorized ? handleCreateNode : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Node ID</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="e.g. N-106" 
-                      value={newNodeId}
-                      onChange={e => setNewNodeId(e.target.value)}
-                      required 
-                      disabled={!isAuthorized}
-                    />
-                  </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Level Type</span>
@@ -2564,7 +2754,7 @@ export default function AdminScreen({ user }) {
                       No nodes defined for this project yet.
                     </div>
                   ) : (
-                    projectNodes.filter(n => n.project_id === selectedProjectId).map(node => {
+                    getHierarchicalNodes(projectNodes.filter(n => n.project_id === selectedProjectId)).map(node => {
                       const linkedInds = indicators.filter(ind => ind.associated_project_node_id === node.node_id);
                       return (
                         <div 
@@ -2573,14 +2763,24 @@ export default function AdminScreen({ user }) {
                             padding: '10px 12px', 
                             background: 'var(--white)', 
                             borderRadius: '4px', 
-                            borderLeft: '3px solid var(--accent)',
+                            borderLeft: '3px solid var(--primary)',
                             boxShadow: 'var(--shadow-sm)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            marginLeft: node.parent_node_id ? '20px' : '0px'
+                            marginLeft: `${node._depth * 24}px`,
+                            position: 'relative'
                           }}
                         >
+                          {node._depth > 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              left: '-16px',
+                              top: '50%',
+                              width: '12px',
+                              borderTop: '2px solid var(--neutral-300)',
+                            }} />
+                          )}
                           <div>
                             <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{node.name}</div>
                             <div style={{ fontSize: '0.7rem', color: 'var(--neutral-600)', marginTop: '2px' }}>
@@ -2626,16 +2826,6 @@ export default function AdminScreen({ user }) {
               <form onSubmit={isAuthorized ? handleCreateProject : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '12px' }}>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Project ID</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="e.g. PRJ-003" 
-                      value={newPrjId}
-                      onChange={e => setNewPrjId(e.target.value)}
-                      required 
-                      disabled={!isAuthorized}
-                    />
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Start Year</label>
@@ -2696,18 +2886,6 @@ export default function AdminScreen({ user }) {
               
               <form onSubmit={isAuthorized ? handleCreateProjectNode : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', gap: '12px' }}>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Node ID</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="e.g. PN-104" 
-                      value={newPrjNodeId}
-                      onChange={e => setNewPrjNodeId(e.target.value)}
-                      required 
-                      disabled={!isAuthorized}
-                    />
-                  </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>Level Type</span>
@@ -2799,6 +2977,110 @@ export default function AdminScreen({ user }) {
       </div>
       )}
 
+      {showLevelTypeModal && (
+        <Modal title="Add Level Type" onClose={() => setShowLevelTypeModal(false)} footer={null}>
+          <form onSubmit={handleSaveLevelType} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Level Type Name</label>
+              <input type="text" className="form-control" placeholder="e.g. Sub-Programme" value={levelTypeInput} onChange={e => setLevelTypeInput(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowLevelTypeModal(false)}>Cancel</button>
+              <button type="submit" className="btn btn-primary">Save</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showActivityModal && (
+        <Modal title="Register New Activity" onClose={() => setShowActivityModal(false)} footer={null}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--neutral-600)', marginBottom: '16px' }}>Define a new actionable activity and optionally assign responsibilities and KPIs.</p>
+          
+          <form onSubmit={isAuthorized ? handleCreateActivity : e => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group">
+              <label>Activity Name *</label>
+              <input className="form-control" placeholder="e.g. Construction of classrooms..." value={newActivityName} onChange={e => setNewActivityName(e.target.value)} required disabled={!isAuthorized} />
+            </div>
+            <div className="form-group">
+              <label>Description</label>
+              <textarea className="form-control" rows="2" placeholder="Brief details about the activity..." value={newActivityDesc} onChange={e => setNewActivityDesc(e.target.value)} disabled={!isAuthorized}></textarea>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Start Date *</label>
+                <input type="date" className="form-control" value={newActivityStartDate} onChange={e => setNewActivityStartDate(e.target.value)} required disabled={!isAuthorized} />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>End Date *</label>
+                <input type="date" className="form-control" value={newActivityEndDate} onChange={e => setNewActivityEndDate(e.target.value)} required disabled={!isAuthorized} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>Estimated Budget (TZS)</label>
+              <input type="number" className="form-control" placeholder="0.00" value={newActivityBudget} onChange={e => setNewActivityBudget(e.target.value)} disabled={!isAuthorized} />
+            </div>
+            
+            <div className="form-group">
+              <label>Responsible Unit *</label>
+              <select className="form-control" value={newActivityUnit} onChange={e => {
+                setNewActivityUnit(e.target.value);
+                setNewActivityPerson(''); // reset person when unit changes
+              }} required disabled={!isAuthorized}>
+                <option value="">Select Unit...</option>
+                <optgroup label="Institutions">
+                  {institutions.map(i => <option key={i.inst_id} value={i.inst_id}>{i.name}</option>)}
+                </optgroup>
+                <optgroup label="Departments">
+                  {departments.map(d => <option key={d.dept_id} value={d.dept_id}>{d.name}</option>)}
+                </optgroup>
+                <optgroup label="Sections">
+                  {sections.map(s => <option key={s.section_id} value={s.section_id}>{s.name}</option>)}
+                </optgroup>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Responsible Person (Optional)</label>
+              <select className="form-control" value={newActivityPerson} onChange={e => setNewActivityPerson(e.target.value)} disabled={!isAuthorized || !newActivityUnit}>
+                <option value="">Anyone in Unit...</option>
+                {users.filter(u => u.inst_id === newActivityUnit || u.dept_id === newActivityUnit || u.section_id === newActivityUnit).map(u => (
+                  <option key={u.user_id} value={u.user_id}>{u.name} ({u.role})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Assign Indicators (Optional)</label>
+              <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid var(--neutral-300)', padding: '8px', borderRadius: '4px', background: '#fff' }}>
+                {indicators.map(ind => (
+                  <label key={ind.indicator_id} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={newActivityIndicators.includes(ind.indicator_id)} 
+                      onChange={(e) => {
+                        if (e.target.checked) setNewActivityIndicators([...newActivityIndicators, ind.indicator_id]);
+                        else setNewActivityIndicators(newActivityIndicators.filter(id => id !== ind.indicator_id));
+                      }} 
+                      style={{ marginRight: '8px' }}
+                    />
+                    <span style={{ fontSize: '0.85rem' }}>{ind.indicator_id} - {ind.name}</span>
+                  </label>
+                ))}
+                {indicators.length === 0 && <span style={{ fontSize: '0.85rem', color: 'var(--neutral-500)' }}>No indicators available</span>}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={!isAuthorized}>
+                ➕ Register Activity
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowActivityModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

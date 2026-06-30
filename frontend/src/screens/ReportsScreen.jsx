@@ -186,7 +186,7 @@ export default function ReportsScreen({ user }) {
       </div>
 
       {/* Left panel: Config Panel */}
-      <div className="card" style={{ order: 0, direction: 'ltr' }}>
+      <div className="card" style={{ order: 0, direction: 'ltr', position: 'relative', zIndex: 100 }}>
         <h3>Report Configurator</h3>
         <p style={{ fontSize: '0.8rem', color: 'var(--neutral-600)', marginBottom: '20px' }}>
           Configure document parameters, filter dimensions, and target outputs.
@@ -254,8 +254,8 @@ export default function ReportsScreen({ user }) {
           <label className="form-label">Reporting Period</label>
           <SearchableSelect
             options={[
-              { value: "2024/25", label: "FY 2024/25" },
-              { value: "2025/26", label: "FY 2025/26" }
+              { value: "2024/25", label: "FY 2024/25 (1 Jul 2024 - 30 Jun 2025)" },
+              { value: "2025/26", label: "FY 2025/26 (1 Jul 2025 - 30 Jun 2026)" }
             ]}
             value={selectedPeriod}
             onChange={setSelectedPeriod}

@@ -709,8 +709,9 @@ h3 {
   bottom: 0;
   background-color: rgba(15, 41, 66, 0.6);
   backdrop-filter: blur(4px);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
   overflow-y: auto;
   padding: 40px 16px;
   z-index: 200;
@@ -722,7 +723,8 @@ h3 {
   box-shadow: var(--shadow-xl);
   width: 100%;
   max-width: 600px;
-  overflow: hidden;
+  overflow: visible;
+  margin: auto;
   animation: modalEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

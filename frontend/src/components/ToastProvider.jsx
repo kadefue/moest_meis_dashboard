@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 
-const ToastContext = createContext(null);
+const ToastContext = createContext({ addToast: () => {}, removeToast: () => {} });
 
 let idCounter = 1;
 
@@ -38,7 +38,6 @@ export function ToastProvider({ children }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within ToastProvider');
   return ctx;
 }
 

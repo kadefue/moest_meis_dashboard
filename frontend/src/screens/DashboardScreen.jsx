@@ -66,18 +66,18 @@ export default function DashboardScreen({ onSelectIndicator, navigateToView }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Configuration Header */}
-      <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', padding: '16px 24px', justifyContent: 'space-between' }}>
+      <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', padding: '16px 24px', justifyContent: 'space-between', position: 'relative', zIndex: 100 }}>
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--neutral-600)' }}>Reporting period</label>
             <SearchableSelect
               options={[
-                { value: "2024/25", label: "FY 2024/25" },
-                { value: "2025/26", label: "FY 2025/26" }
+                { value: "2024/25", label: "FY 2024/25 (1 Jul 2024 - 30 Jun 2025)" },
+                { value: "2025/26", label: "FY 2025/26 (1 Jul 2025 - 30 Jun 2026)" }
               ]}
               value={selectedPeriod}
               onChange={setSelectedPeriod}
-              style={{ minWidth: '150px' }}
+              style={{ minWidth: '220px' }}
             />
           </div>
         </div>

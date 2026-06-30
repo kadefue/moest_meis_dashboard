@@ -107,7 +107,7 @@ export default function IndicatorScreen({ initialIndicatorId, user }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       {/* Cascade Filters card */}
-      <div className="card" style={{ paddingBottom: '36px', marginBottom: '24px' }}>
+      <div className="card" style={{ paddingBottom: '36px', marginBottom: '24px', position: 'relative', zIndex: 100 }}>
         <h3>Filter & Drill-Down Control</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginTop: '16px' }}>
           

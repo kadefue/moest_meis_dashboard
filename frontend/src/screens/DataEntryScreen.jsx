@@ -7,8 +7,10 @@ import SearchableSelect from '../components/SearchableSelect';
 export default function DataEntryScreen({ user }) {
   const [step, setStep] = useState(1);
   const [indicators, setIndicators] = useState([]);
+  const [activities, setActivities] = useState([]);
   
   // Form State
+  const [activityId, setActivityId] = useState('standalone');
   const [indicatorId, setIndicatorId] = useState('');
   const [period, setPeriod] = useState('2024/25 Q4');
   const [region, setRegion] = useState('');
@@ -42,9 +44,10 @@ export default function DataEntryScreen({ user }) {
     // MSDD Page 8 Constraint: submissions are strictly restricted to primary indicators (is_derived = false)
     const allInds = getVisibleIndicators(user);
     const primaryOnly = allInds.filter(i => !i.is_derived);
-    
     setIndicators(primaryOnly);
-    if (primaryOnly.length > 0) setIndicatorId(primaryOnly[0].indicator_id);
+    
+    const allActivities = getTable('activities');
+    setActivities(allActivities);
 
     // Smart defaults based on logged in user scope
     if (user?.region_id) {
@@ -130,21 +133,34 @@ export default function DataEntryScreen({ user }) {
   };
 
   const handleSaveEdit = () => {
-    if (!editValue || isNaN(editValue)) {
-      addToast({ message: 'Please enter a valid numeric value', type: 'warning' });
-      return;
-    }
-    const val = Number(editValue);
     const indId = editingSubmission.indicator_id;
-    if (indId === 'IND-001' || indId === 'IND-003' || indId === 'IND-004') {
-      if (val < 0 || val > 100) {
-        addToast({ message: 'Percentage values must be between 0 and 100', type: 'warning' });
+    const meta = getTable('metadata').find(m => m.indicator_id === indId);
+    const unitStr = meta?.unit ? meta.unit.toLowerCase() : '';
+    
+    let val;
+    if (unitStr.includes('bool')) {
+      const normalized = editValue.toString().trim().toLowerCase();
+      if (normalized !== 'true' && normalized !== 'false' && normalized !== '1' && normalized !== '0' && normalized !== 'yes' && normalized !== 'no') {
+        addToast({ message: 'Boolean values must be yes/no, true/false, or 1/0', type: 'warning' });
         return;
       }
-    } else if (indId === 'IND-002') {
-      if (val < 5 || val > 150) {
-        addToast({ message: 'Teacher ratio should realistically be between 5 and 150', type: 'warning' });
+      val = (normalized === 'true' || normalized === '1' || normalized === 'yes') ? 1 : 0;
+    } else {
+      if (editValue === '' || isNaN(editValue)) {
+        addToast({ message: 'Please enter a valid numeric value', type: 'warning' });
         return;
+      }
+      val = Number(editValue);
+      if (unitStr.includes('percent') || unitStr.includes('%')) {
+        if (val < 0 || val > 100) {
+          addToast({ message: 'Percentage values must be between 0 and 100', type: 'warning' });
+          return;
+        }
+      } else if (indId === 'IND-002' || unitStr.includes('ratio')) {
+        if (val < 5 || val > 150) {
+          addToast({ message: 'Teacher ratio should realistically be between 5 and 150', type: 'warning' });
+          return;
+        }
       }
     }
 
@@ -200,13 +216,24 @@ export default function DataEntryScreen({ user }) {
       if (!submissionTrack) newErrors.submissionTrack = 'Submission track is required';
     }
     if (currentStep === 2) {
-      if (!actualValue || isNaN(actualValue)) newErrors.actualValue = 'Please enter a valid numeric value';
-      else {
-        const val = Number(actualValue);
-        if (indicatorId === 'IND-001' || indicatorId === 'IND-003' || indicatorId === 'IND-004') {
-          if (val < 0 || val > 100) newErrors.actualValue = 'Percentage values must be between 0 and 100';
-        } else if (indicatorId === 'IND-002') {
-          if (val < 5 || val > 150) newErrors.actualValue = 'Teacher ratio should realistically be between 5 and 150';
+      const meta = getTable('metadata').find(m => m.indicator_id === indicatorId);
+      const unitStr = meta?.unit ? meta.unit.toLowerCase() : '';
+
+      if (unitStr.includes('bool')) {
+        const normalized = actualValue.trim().toLowerCase();
+        if (normalized !== 'true' && normalized !== 'false' && normalized !== '1' && normalized !== '0' && normalized !== 'yes' && normalized !== 'no') {
+          newErrors.actualValue = 'Boolean values must be yes/no, true/false, or 1/0';
+        }
+      } else {
+        if (!actualValue || isNaN(actualValue)) {
+          newErrors.actualValue = 'Please enter a valid numeric value';
+        } else {
+          const val = Number(actualValue);
+          if (unitStr.includes('percent') || unitStr.includes('%')) {
+            if (val < 0 || val > 100) newErrors.actualValue = 'Percentage values must be between 0 and 100';
+          } else if (indicatorId === 'IND-002' || unitStr.includes('ratio')) {
+            if (val < 5 || val > 150) newErrors.actualValue = 'Teacher ratio should realistically be between 5 and 150';
+          }
         }
       }
     }
@@ -250,11 +277,21 @@ export default function DataEntryScreen({ user }) {
     const actuals = getTable('actual_data');
     const newId = `DAT-0${actuals.length + 1}`;
     
+    const meta = getTable('metadata').find(m => m.indicator_id === indicatorId);
+    const unitStr = meta?.unit ? meta.unit.toLowerCase() : '';
+    let parsedValue;
+    if (unitStr.includes('bool')) {
+      const normalized = actualValue.trim().toLowerCase();
+      parsedValue = (normalized === 'true' || normalized === '1' || normalized === 'yes') ? 1.00 : 0.00;
+    } else {
+      parsedValue = Number(actualValue);
+    }
+
     const newEntry = {
       data_id: newId,
       indicator_id: indicatorId,
       period,
-      actual_value: Number(actualValue),
+      actual_value: parsedValue,
       region,
       district: district || null,
       ward: ward || null,
@@ -337,7 +374,7 @@ export default function DataEntryScreen({ user }) {
       )}
 
       {/* Form Card */}
-      <div className="card" style={{ padding: '32px' }}>
+      <div className="card" style={{ padding: '32px', position: 'relative', zIndex: 100 }}>
         
         {/* STEP 1: SCOPE */}
         {step === 1 && (
@@ -348,9 +385,28 @@ export default function DataEntryScreen({ user }) {
             </p>
 
             <div className="form-group">
+              <label className="form-label">Activity Context</label>
+              <SearchableSelect
+                options={[
+                  { value: "standalone", label: "No Specific Activity (Standalone KPI)" },
+                  ...activities.map(act => ({ value: act.activity_id, label: `${act.activity_id}: ${act.name}` }))
+                ]}
+                value={activityId}
+                onChange={(val) => {
+                  setActivityId(val);
+                  setIndicatorId(''); // Reset indicator when activity changes
+                }}
+              />
+              <div className="helper-text">Optional: Link this data submission to a specific activity.</div>
+            </div>
+
+            <div className="form-group">
               <label className="form-label">Indicator Code <span className="required">*</span></label>
               <SearchableSelect
-                options={indicators.map(ind => ({ value: ind.indicator_id, label: `${ind.indicator_id}: ${ind.name}` }))}
+                options={indicators
+                  .filter(ind => activityId === 'standalone' || ind.associated_activity_id === activityId)
+                  .map(ind => ({ value: ind.indicator_id, label: `${ind.indicator_id}: ${ind.name}` }))
+                }
                 value={indicatorId}
                 onChange={setIndicatorId}
                 placeholder="Select Indicator"
@@ -375,9 +431,11 @@ export default function DataEntryScreen({ user }) {
               <label className="form-label">Reporting Period <span className="required">*</span></label>
               <SearchableSelect
                 options={[
-                  { value: "2024/25 Q3", label: "2024/25 Quarter 3" },
-                  { value: "2024/25 Q4", label: "2024/25 Quarter 4" },
-                  { value: "2024/25", label: "2024/25 Annual Census" }
+                  { value: "2024/25 Q1", label: "2024/25 Quarter 1 (1 Jul 2024 - 30 Sep 2024)" },
+                  { value: "2024/25 Q2", label: "2024/25 Quarter 2 (1 Oct 2024 - 31 Dec 2024)" },
+                  { value: "2024/25 Q3", label: "2024/25 Quarter 3 (1 Jan 2025 - 31 Mar 2025)" },
+                  { value: "2024/25 Q4", label: "2024/25 Quarter 4 (1 Apr 2025 - 30 Jun 2025)" },
+                  { value: "2024/25", label: "2024/25 Annual Census (1 Jul 2024 - 30 Jun 2025)" }
                 ]}
                 value={period}
                 onChange={setPeriod}
@@ -471,7 +529,7 @@ export default function DataEntryScreen({ user }) {
               />
               {errors.actualValue && <span className="error-text">⚠️ {errors.actualValue}</span>}
               <div className="helper-text">
-                Value unit must match: {indicatorId === 'IND-002' ? 'Pupils per Teacher Ratio' : 'Percentage (%)'}
+                Value unit must match: {getTable('metadata').find(m => m.indicator_id === indicatorId)?.unit || 'Numerical value'}
               </div>
             </div>
 
@@ -774,7 +832,7 @@ export default function DataEntryScreen({ user }) {
                 onChange={e => setEditValue(e.target.value)}
               />
               <div className="helper-text">
-                Value unit: {editingSubmission.indicator_id === 'IND-002' ? 'Pupils per Teacher Ratio' : 'Percentage (%)'}
+                Value unit: {getTable('metadata').find(m => m.indicator_id === editingSubmission.indicator_id)?.unit || 'Numerical value'}
               </div>
             </div>
 
